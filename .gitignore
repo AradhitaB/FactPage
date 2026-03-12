@@ -11,6 +11,7 @@ backend/build/
 backend/.env
 backend/*.sqlite
 backend/*.db
+*.db
 
 # Node
 frontend/node_modules/

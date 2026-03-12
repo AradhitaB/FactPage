@@ -89,7 +89,7 @@ def _run_test(a: VariantCounts, b: VariantCounts) -> TestResult:
             alpha=ALPHA,
             alternative="two-sided",
         )
-    except Exception:
+    except (ValueError, ZeroDivisionError, RuntimeError):
         observed_power = 0.0
 
     return TestResult(

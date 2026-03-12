@@ -8,7 +8,7 @@ from schemas import AssignmentResponse
 router = APIRouter(prefix="/api", tags=["assignment"])
 
 SESSION_COOKIE = "factpage_session"
-COOKIE_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
+COOKIE_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
 
 
 @router.get("/assignment", response_model=AssignmentResponse)

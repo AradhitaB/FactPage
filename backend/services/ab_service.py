@@ -1,12 +1,14 @@
-import random
+import secrets
 from sqlalchemy.orm import Session as DBSession
 from models import Session, Variant
+
+_VARIANTS = [Variant.A, Variant.B]
 
 
 def assign_variants() -> tuple[Variant, Variant]:
     """Independently and randomly assign list and button variants (50/50 each)."""
-    list_variant = random.choice([Variant.A, Variant.B])
-    button_variant = random.choice([Variant.A, Variant.B])
+    list_variant = secrets.choice(_VARIANTS)
+    button_variant = secrets.choice(_VARIANTS)
     return list_variant, button_variant
 
 
