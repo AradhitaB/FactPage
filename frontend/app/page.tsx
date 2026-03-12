@@ -1,65 +1,73 @@
-import Image from "next/image";
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { useAssignment } from '@/lib/hooks/useAssignment'
+import { api } from '@/lib/api'
+import { LIST_ITEMS } from '@/lib/facts'
+import ScrollableList from '@/components/ScrollableList'
+import ClickThroughList from '@/components/ClickThroughList'
+import CTAButton from '@/components/CTAButton'
 
 export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+  const router = useRouter()
+  const { assignment, isLoading, error } = useAssignment()
+
+  // Fire list_complete event — errors are swallowed so they never block the UI
+  const handleListComplete = () => {
+    if (!assignment) return
+    api.recordEvent(assignment.session_id, 'list_complete').catch((err) => console.error('Failed to record event:', err))
+  }
+
+  // Fire button_click then navigate immediately — recording is best-effort
+  const handleButtonClick = () => {
+    if (!assignment) return
+    api.recordEvent(assignment.session_id, 'button_click').catch((err) => console.error('Failed to record event:', err))
+    router.push('/stats')
+  }
+
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <span className="text-text-muted text-sm animate-pulse">Loading…</span>
       </main>
-    </div>
-  );
+    )
+  }
+
+  if (error || !assignment) {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-4">
+        <p className="text-center text-sm text-red-400">
+          Could not reach the server. Make sure the backend is running.
+        </p>
+      </main>
+    )
+  }
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
+      <div className="flex w-full max-w-2xl flex-col gap-6">
+
+        {/* Header */}
+        <header className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-text">
+            FactPage
+          </h1>
+          <p className="text-sm text-text-muted">
+            Read through the list, then hit the button below.
+          </p>
+        </header>
+
+        {/* List — variant determines presentation, not content */}
+        {assignment.list_variant === 'A' ? (
+          <ScrollableList items={LIST_ITEMS} onComplete={handleListComplete} />
+        ) : (
+          <ClickThroughList items={LIST_ITEMS} onComplete={handleListComplete} />
+        )}
+
+        {/* CTA — variant determines visual treatment */}
+        <CTAButton variant={assignment.button_variant} onClick={handleButtonClick} />
+
+      </div>
+    </main>
+  )
 }
