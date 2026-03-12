@@ -1,3 +1,4 @@
+import config
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session as DBSession
 from database import get_db
@@ -7,7 +8,7 @@ from schemas import RawStats, FullStats
 
 router = APIRouter(prefix="/api", tags=["stats"])
 
-SESSION_COOKIE = "factpage_session"
+SESSION_COOKIE = config.SESSION_COOKIE
 
 
 @router.get("/stats", response_model=RawStats | FullStats)

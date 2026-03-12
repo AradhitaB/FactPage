@@ -1,3 +1,4 @@
+import config
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -10,7 +11,7 @@ from schemas import EventRequest, EventResponse
 router = APIRouter(prefix="/api", tags=["events"])
 limiter = Limiter(key_func=get_remote_address)
 
-SESSION_COOKIE = "factpage_session"
+SESSION_COOKIE = config.SESSION_COOKIE
 
 
 @router.post("/events", response_model=EventResponse)

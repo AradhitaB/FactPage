@@ -118,7 +118,14 @@ def test_event_rejects_invalid_event_type(client):
 
 # ─── Stats ────────────────────────────────────────────────────────────────────
 
+def test_stats_requires_session(client):
+    """Stats endpoint must reject requests without a valid session cookie."""
+    r = client.get("/api/stats")
+    assert r.status_code == 403
+
+
 def test_stats_returns_raw_on_empty_db(client):
+    _get_session(client)  # establishes session cookie
     r = client.get("/api/stats")
     assert r.status_code == 200
     data = r.json()
@@ -128,6 +135,7 @@ def test_stats_returns_raw_on_empty_db(client):
 
 
 def test_stats_shape_raw(client):
+    _get_session(client)  # establishes session cookie
     r = client.get("/api/stats")
     data = r.json()
     for key in ("list_a", "list_b", "button_a", "button_b"):

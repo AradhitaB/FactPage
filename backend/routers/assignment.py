@@ -7,7 +7,7 @@ from schemas import AssignmentResponse
 
 router = APIRouter(prefix="/api", tags=["assignment"])
 
-SESSION_COOKIE = "factpage_session"
+SESSION_COOKIE = config.SESSION_COOKIE
 COOKIE_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
 
 
