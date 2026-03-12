@@ -2,7 +2,7 @@ import os
 import math
 import numpy as np
 from scipy import stats
-from statsmodels.stats.proportion import proportion_effectsize
+from statsmodels.stats.proportion import proportion_effectsize, proportions_ztest
 from statsmodels.stats.power import NormalIndPower
 from sqlalchemy.orm import Session as DBSession
 from models import Session, Event, Variant, EventType
@@ -46,7 +46,7 @@ def _run_test(a: VariantCounts, b: VariantCounts) -> TestResult:
     count = np.array([a.converted, b.converted])
     nobs = np.array([a.assigned, b.assigned])
 
-    z_stat, p_value = stats.proportions_ztest(count, nobs, alternative="two-sided")
+    z_stat, p_value = proportions_ztest(count, nobs, alternative="two-sided")
 
     # 95% confidence interval on the difference (B - A)
     diff = b.rate - a.rate
