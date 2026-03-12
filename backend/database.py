@@ -1,7 +1,10 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-DATABASE_URL = "sqlite:///./factpage.db"
+# Anchor the DB file to the backend directory regardless of where Python is invoked from
+_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "factpage.db")
+DATABASE_URL = f"sqlite:///{_DB_PATH}"
 
 engine = create_engine(
     DATABASE_URL,
