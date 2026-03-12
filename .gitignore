@@ -1,0 +1,35 @@
+# Python
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/.venv/
+backend/venv/
+backend/*.egg-info/
+backend/dist/
+backend/build/
+backend/.env
+backend/*.sqlite
+backend/*.db
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env
+frontend/.env.local
+frontend/.env*.local
+
+# Virtual env at root
+.venv/
+venv/
+
+# General
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+
+# IDE
+.vscode/
+.idea/
