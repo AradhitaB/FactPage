@@ -1,17 +1,18 @@
-import os
 import math
 import numpy as np
 from scipy import stats
+from sqlalchemy import func
 from statsmodels.stats.proportion import proportion_effectsize, proportions_ztest
 from statsmodels.stats.power import NormalIndPower
 from sqlalchemy.orm import Session as DBSession
+import config
 from models import Session, Event, Variant, EventType
 from schemas import VariantCounts, TestResult, RawStats, FullStats
 
-ALPHA = float(os.getenv("ALPHA", "0.05"))
-POWER = float(os.getenv("POWER", "0.80"))
-MDE = float(os.getenv("MDE", "0.10"))
-BASELINE = float(os.getenv("BASELINE_CONVERSION", "0.50"))
+ALPHA = config.ALPHA
+POWER = config.POWER
+MDE = config.MDE
+BASELINE = config.BASELINE_CONVERSION
 
 
 def _required_per_variant() -> int:
@@ -22,27 +23,45 @@ def _required_per_variant() -> int:
     return math.ceil(n)
 
 
-def _variant_counts(
-    db: DBSession, variant_field: str, event_type: EventType, variant: Variant
-) -> VariantCounts:
-    assigned = (
-        db.query(Session)
-        .filter(getattr(Session, variant_field) == variant)
-        .count()
+def _query_counts(
+    db: DBSession,
+    group_col,
+    event_type: EventType,
+) -> dict[Variant, VariantCounts]:
+    """
+    Single GROUP BY query replacing two COUNT queries per variant.
+
+    LEFT OUTER JOIN ensures sessions with no matching event still appear
+    with converted=0. func.count(Event.id) counts only non-NULL event ids,
+    which is correct because unmatched rows from the outer join produce NULLs.
+    """
+    rows = (
+        db.query(
+            group_col,
+            func.count(Session.id).label("assigned"),
+            func.count(Event.id).label("converted"),
+        )
+        .outerjoin(
+            Event,
+            (Event.session_id == Session.id) & (Event.event_type == event_type),
+        )
+        .group_by(group_col)
+        .all()
     )
-    converted = (
-        db.query(Event)
-        .join(Session)
-        .filter(getattr(Session, variant_field) == variant)
-        .filter(Event.event_type == event_type)
-        .count()
-    )
-    rate = converted / assigned if assigned > 0 else 0.0
-    return VariantCounts(assigned=assigned, converted=converted, rate=rate)
+
+    result = {Variant.A: VariantCounts(assigned=0, converted=0, rate=0.0),
+              Variant.B: VariantCounts(assigned=0, converted=0, rate=0.0)}
+    for variant, assigned, converted in rows:
+        rate = converted / assigned if assigned > 0 else 0.0
+        result[variant] = VariantCounts(assigned=assigned, converted=converted, rate=rate)
+    return result
 
 
 def _run_test(a: VariantCounts, b: VariantCounts) -> TestResult:
     """Two-proportion z-test with 95% CI and Cohen's h effect size."""
+    if a.assigned == 0 or b.assigned == 0:
+        raise ValueError("Cannot run test with zero observations in a variant")
+
     count = np.array([a.converted, b.converted])
     nobs = np.array([a.assigned, b.assigned])
 
@@ -87,10 +106,11 @@ def _run_test(a: VariantCounts, b: VariantCounts) -> TestResult:
 def get_stats(db: DBSession) -> RawStats | FullStats:
     required = _required_per_variant()
 
-    list_a = _variant_counts(db, "list_variant", EventType.list_complete, Variant.A)
-    list_b = _variant_counts(db, "list_variant", EventType.list_complete, Variant.B)
-    button_a = _variant_counts(db, "button_variant", EventType.button_click, Variant.A)
-    button_b = _variant_counts(db, "button_variant", EventType.button_click, Variant.B)
+    list_counts = _query_counts(db, Session.list_variant, EventType.list_complete)
+    button_counts = _query_counts(db, Session.button_variant, EventType.button_click)
+
+    list_a, list_b = list_counts[Variant.A], list_counts[Variant.B]
+    button_a, button_b = button_counts[Variant.A], button_counts[Variant.B]
 
     current_min = min(list_a.assigned, list_b.assigned, button_a.assigned, button_b.assigned)
 

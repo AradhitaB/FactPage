@@ -1,3 +1,4 @@
+from uuid import UUID
 from pydantic import BaseModel
 from models import Variant, EventType
 
@@ -13,7 +14,7 @@ class AssignmentResponse(BaseModel):
 # ─── Events ───────────────────────────────────────────────────────────────────
 
 class EventRequest(BaseModel):
-    session_id: str
+    session_id: UUID  # Pydantic rejects malformed UUIDs before they reach the DB
     event_type: EventType
 
 

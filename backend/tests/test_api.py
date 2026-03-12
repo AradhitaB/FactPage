@@ -77,6 +77,16 @@ def test_event_is_idempotent(client):
     assert r2.status_code == 200
 
 
+def test_event_rejects_malformed_session_id(client):
+    """Malformed UUIDs should be rejected by Pydantic before reaching the DB."""
+    _get_session(client)
+    r = client.post("/api/events", json={
+        "session_id": "not-a-uuid",
+        "event_type": "button_click",
+    })
+    assert r.status_code == 422
+
+
 def test_event_rejects_session_mismatch(client):
     """session_id in body must match the cookie — prevents spoofing another user's session."""
     _get_session(client)  # establishes the cookie

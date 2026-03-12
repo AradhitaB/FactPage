@@ -1,6 +1,5 @@
-import os
 from contextlib import asynccontextmanager
-from dotenv import load_dotenv
+import config  # must be first — loads .env before any other module reads os.getenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -9,11 +8,6 @@ from slowapi.errors import RateLimitExceeded
 
 from database import engine, Base
 from routers import assignment, events, stats
-
-load_dotenv()
-
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 
 @asynccontextmanager
@@ -27,7 +21,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
 app = FastAPI(
     title="FactPage A/B API",
-    docs_url="/docs" if ENVIRONMENT == "development" else None,
+    docs_url="/docs" if config.ENVIRONMENT == "development" else None,
     redoc_url=None,
     lifespan=lifespan,
 )
@@ -37,7 +31,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
+    allow_origins=[config.FRONTEND_URL],
     allow_credentials=True,  # required for cookies
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],

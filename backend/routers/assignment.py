@@ -1,3 +1,4 @@
+import config
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session as DBSession
 from database import get_db
@@ -35,7 +36,7 @@ def get_or_create_assignment(
         max_age=COOKIE_MAX_AGE,
         httponly=True,
         samesite="lax",
-        secure=False,  # set to True in production behind HTTPS
+        secure=config.ENVIRONMENT == "production",
     )
     return AssignmentResponse(
         session_id=session.id,
