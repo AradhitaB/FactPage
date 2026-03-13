@@ -1,7 +1,7 @@
 import math
 import pytest
 from models import Session, Event, Variant, EventType
-from schemas import RawStats, FullStats
+from schemas import StatsResponse
 from services.stats_service import _required_per_variant, _run_test, get_stats
 from schemas import VariantCounts
 
@@ -82,30 +82,38 @@ def _seed_db(db, list_a_n, list_b_n, btn_a_n, btn_b_n,
     db.commit()
 
 
-def test_get_stats_returns_raw_when_below_threshold(test_db):
+def test_get_stats_locked_when_below_threshold(test_db):
     # Seed with very few sessions — well below required_per_variant
     _seed_db(test_db, 5, 5, 5, 5, 2, 3, 2, 3)
     result = get_stats(test_db)
-    assert isinstance(result, RawStats)
-    assert result.unlocked is False
-    assert result.current_min_per_variant < result.required_per_variant
+    assert isinstance(result, StatsResponse)
+    assert result.list_unlocked is False
+    assert result.button_unlocked is False
+    assert result.list_current_min < result.required_per_variant
+    assert result.button_current_min < result.required_per_variant
+    assert result.list_test is None
+    assert result.button_test is None
 
 
-def test_get_stats_returns_full_when_above_threshold(test_db):
+def test_get_stats_unlocked_when_above_threshold(test_db):
     required = _required_per_variant()
     n = required + 10  # comfortably above threshold
     _seed_db(test_db, n, n, n, n,
              int(n * 0.4), int(n * 0.5),
              int(n * 0.4), int(n * 0.5))
     result = get_stats(test_db)
-    assert isinstance(result, FullStats)
-    assert result.unlocked is True
-    assert hasattr(result, "list_test")
-    assert hasattr(result, "button_test")
+    assert isinstance(result, StatsResponse)
+    assert result.list_unlocked is True
+    assert result.button_unlocked is True
+    assert result.list_test is not None
+    assert result.button_test is not None
+
 
 
 def test_get_stats_empty_db(test_db):
     result = get_stats(test_db)
-    assert isinstance(result, RawStats)
+    assert isinstance(result, StatsResponse)
     assert result.list_a.assigned == 0
     assert result.list_b.assigned == 0
+    assert result.list_unlocked is False
+    assert result.button_unlocked is False

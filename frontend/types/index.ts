@@ -22,30 +22,21 @@ export interface TestResult {
   p_value: number
   ci_low: number
   ci_high: number
-  effect_size: number  // Cohen's h
+  effect_size: number  // Cohen's h — positive means B > A, negative means A > B
   power: number
   significant: boolean
 }
 
-export interface RawStats {
-  unlocked: false
+export interface Stats {
+  required_per_variant: number
   list_a: VariantCounts
   list_b: VariantCounts
   button_a: VariantCounts
   button_b: VariantCounts
-  required_per_variant: number
-  current_min_per_variant: number
+  list_current_min: number   // min(list_a.assigned, list_b.assigned)
+  button_current_min: number // min(button_a.assigned, button_b.assigned)
+  list_unlocked: boolean
+  button_unlocked: boolean
+  list_test?: TestResult     // present only when list_unlocked
+  button_test?: TestResult   // present only when button_unlocked
 }
-
-export interface FullStats {
-  unlocked: true
-  list_a: VariantCounts
-  list_b: VariantCounts
-  button_a: VariantCounts
-  button_b: VariantCounts
-  required_per_variant: number
-  list_test: TestResult
-  button_test: TestResult
-}
-
-export type Stats = RawStats | FullStats

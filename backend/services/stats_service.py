@@ -7,7 +7,7 @@ from statsmodels.stats.power import NormalIndPower
 from sqlalchemy.orm import Session as DBSession
 import config
 from models import Session, Event, Variant, EventType
-from schemas import VariantCounts, TestResult, RawStats, FullStats
+from schemas import VariantCounts, TestResult, StatsResponse
 
 ALPHA = config.ALPHA
 POWER = config.POWER
@@ -21,6 +21,10 @@ def _required_per_variant() -> int:
     analysis = NormalIndPower()
     n = analysis.solve_power(effect_size=effect, alpha=ALPHA, power=POWER, alternative="two-sided")
     return math.ceil(n)
+
+
+# Computed once at module load — inputs are config constants, no need to recompute per request.
+REQUIRED_PER_VARIANT: int = _required_per_variant()
 
 
 def _query_counts(
@@ -103,30 +107,29 @@ def _run_test(a: VariantCounts, b: VariantCounts) -> TestResult:
     )
 
 
-def get_stats(db: DBSession) -> RawStats | FullStats:
-    required = _required_per_variant()
-
+def get_stats(db: DBSession) -> StatsResponse:
     list_counts = _query_counts(db, Session.list_variant, EventType.list_complete)
     button_counts = _query_counts(db, Session.button_variant, EventType.button_click)
 
     list_a, list_b = list_counts[Variant.A], list_counts[Variant.B]
     button_a, button_b = button_counts[Variant.A], button_counts[Variant.B]
 
-    current_min = min(list_a.assigned, list_b.assigned, button_a.assigned, button_b.assigned)
+    # Each experiment unlocks independently once both its variants reach the threshold.
+    list_current_min = min(list_a.assigned, list_b.assigned)
+    button_current_min = min(button_a.assigned, button_b.assigned)
+    list_unlocked = list_current_min >= REQUIRED_PER_VARIANT
+    button_unlocked = button_current_min >= REQUIRED_PER_VARIANT
 
-    base = dict(
+    return StatsResponse(
+        required_per_variant=REQUIRED_PER_VARIANT,
         list_a=list_a,
         list_b=list_b,
         button_a=button_a,
         button_b=button_b,
-        required_per_variant=required,
-    )
-
-    if current_min < required:
-        return RawStats(**base, current_min_per_variant=current_min)
-
-    return FullStats(
-        **base,
-        list_test=_run_test(list_a, list_b),
-        button_test=_run_test(button_a, button_b),
+        list_current_min=list_current_min,
+        button_current_min=button_current_min,
+        list_unlocked=list_unlocked,
+        button_unlocked=button_unlocked,
+        list_test=_run_test(list_a, list_b) if list_unlocked else None,
+        button_test=_run_test(button_a, button_b) if button_unlocked else None,
     )

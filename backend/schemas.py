@@ -30,34 +30,31 @@ class VariantCounts(BaseModel):
     rate: float
 
 
-class RawStats(BaseModel):
-    """Returned before minimum sample size is reached."""
-    unlocked: bool = False
-    list_a: VariantCounts
-    list_b: VariantCounts
-    button_a: VariantCounts
-    button_b: VariantCounts
-    required_per_variant: int
-    current_min_per_variant: int  # smallest of the four variant counts
-
-
 class TestResult(BaseModel):
     z_stat: float
     p_value: float
     ci_low: float   # lower bound of 95% CI on the difference in proportions
     ci_high: float  # upper bound
-    effect_size: float  # Cohen's h
+    effect_size: float  # Cohen's h — positive means B > A, negative means A > B
     power: float    # observed power given current n
     significant: bool
 
 
-class FullStats(BaseModel):
-    """Returned once minimum sample size is reached."""
-    unlocked: bool = True
+class StatsResponse(BaseModel):
+    """
+    Unified stats response with per-experiment unlock status.
+
+    Each experiment unlocks independently once its own variants each reach
+    required_per_variant. list_test / button_test are None until unlocked.
+    """
+    required_per_variant: int
     list_a: VariantCounts
     list_b: VariantCounts
     button_a: VariantCounts
     button_b: VariantCounts
-    required_per_variant: int
-    list_test: TestResult
-    button_test: TestResult
+    list_current_min: int    # min(list_a.assigned, list_b.assigned)
+    button_current_min: int  # min(button_a.assigned, button_b.assigned)
+    list_unlocked: bool
+    button_unlocked: bool
+    list_test: TestResult | None = None
+    button_test: TestResult | None = None

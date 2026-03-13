@@ -45,7 +45,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[config.FRONTEND_URL],
+    allow_origins=[config.FRONTEND_URL, *config.EXTRA_ORIGINS],
     allow_credentials=True,  # required for cookies
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
