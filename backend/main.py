@@ -1,5 +1,7 @@
 from contextlib import asynccontextmanager
 import config  # must be first — loads .env before any other module reads os.getenv
+import logging
+import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -8,8 +10,25 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from database import engine, Base
+from database import engine, Base, SessionLocal
 from routers import assignment, events, stats
+from services.ab_service import cleanup_old_sessions
+
+logging.basicConfig(
+    level=logging.DEBUG if config.ENVIRONMENT == "development" else logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+logger = logging.getLogger("factpage")
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        start = time.perf_counter()
+        response = await call_next(request)
+        ms = (time.perf_counter() - start) * 1000
+        logger.info("%s %s %d %.1fms", request.method, request.url.path, response.status_code, ms)
+        return response
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -25,9 +44,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create all tables on startup if they don't exist
     Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        deleted = cleanup_old_sessions(db)
+        if deleted:
+            logger.info("Startup cleanup: removed %d expired session(s)", deleted)
+    finally:
+        db.close()
+    logger.info("FactPage API started (environment=%s, frontend=%s)", config.ENVIRONMENT, config.FRONTEND_URL)
     yield
+    logger.info("FactPage API shutting down")
 
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
@@ -42,6 +69,7 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
