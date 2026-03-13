@@ -124,14 +124,16 @@ def test_stats_requires_session(client):
     assert r.status_code == 403
 
 
-def test_stats_returns_raw_on_empty_db(client):
+def test_stats_returns_locked_on_empty_db(client):
     _get_session(client)  # establishes session cookie
     r = client.get("/api/stats")
     assert r.status_code == 200
     data = r.json()
-    assert data["unlocked"] is False
+    assert data["list_unlocked"] is False
+    assert data["button_unlocked"] is False
     assert "required_per_variant" in data
-    assert "current_min_per_variant" in data
+    assert "list_current_min" in data
+    assert "button_current_min" in data
 
 
 def test_stats_shape_raw(client):

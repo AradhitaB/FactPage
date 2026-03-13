@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { useAssignment } from '@/lib/hooks/useAssignment'
-import type { Stats, RawStats, FullStats, VariantCounts, TestResult } from '@/types'
+import type { Stats, VariantCounts, TestResult } from '@/types'
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
@@ -78,9 +78,38 @@ function CIDiagram({ ci_low, ci_high, diff }: { ci_low: number; ci_high: number;
   )
 }
 
-// ─── Experiment card ──────────────────────────────────────────────────────────
+// ─── Experiment sections ───────────────────────────────────────────────────────
 
-function ExperimentCard({
+function ExperimentRawSection({
+  name,
+  a,
+  b,
+  currentMin,
+  required,
+}: {
+  name: string
+  a: VariantCounts
+  b: VariantCounts
+  currentMin: number
+  required: number
+}) {
+  return (
+    <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="text-sm font-semibold text-text">{name}</h2>
+        <span className="font-mono text-xs text-text-muted">{currentMin} / {required} per variant</span>
+      </div>
+      <ProgressBar value={currentMin} max={required} />
+      <ConversionBars a={a} b={b} />
+      <div className="flex gap-6 text-xs text-text-muted">
+        <span>A: {a.converted}/{a.assigned} ({(a.rate * 100).toFixed(1)}%)</span>
+        <span>B: {b.converted}/{b.assigned} ({(b.rate * 100).toFixed(1)}%)</span>
+      </div>
+    </section>
+  )
+}
+
+function ExperimentFullSection({
   name,
   a,
   b,
@@ -93,6 +122,8 @@ function ExperimentCard({
 }) {
   const diff = b.rate - a.rate
   const { significant } = test
+  // Cohen's h: positive → B > A, negative → A > B
+  const hDirection = test.effect_size > 0 ? 'B > A' : test.effect_size < 0 ? 'A > B' : 'no diff'
 
   return (
     <section className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-5">
@@ -113,10 +144,10 @@ function ExperimentCard({
         <p className="text-xs text-text-muted">
           95% CI on B − A:{' '}
           <span className="font-mono">
-            [{ci(test.ci_low)}, {ci(test.ci_high)}]
+            [{fmtPct(test.ci_low)}, {fmtPct(test.ci_high)}]
           </span>
           {' · '}point estimate{' '}
-          <span className="font-mono">{ci(diff)}</span>
+          <span className="font-mono">{fmtPct(diff)}</span>
         </p>
         <CIDiagram ci_low={test.ci_low} ci_high={test.ci_high} diff={diff} />
       </div>
@@ -125,7 +156,7 @@ function ExperimentCard({
         {[
           { label: 'p-value', value: test.p_value.toFixed(4) },
           { label: 'z-stat', value: test.z_stat.toFixed(2) },
-          { label: "Cohen's h", value: test.effect_size.toFixed(3) },
+          { label: "Cohen's h", value: `${test.effect_size.toFixed(3)} (${hDirection})` },
           { label: 'Power', value: `${(test.power * 100).toFixed(0)}%` },
         ].map(({ label, value }) => (
           <div key={label}>
@@ -143,66 +174,13 @@ function ExperimentCard({
   )
 }
 
-function ci(v: number): string {
+function fmtPct(v: number): string {
   return `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`
 }
 
-// ─── Views ────────────────────────────────────────────────────────────────────
-
-function RawView({ stats }: { stats: RawStats }) {
-  return (
-    <div className="flex flex-col gap-5">
-      <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5">
-        <div className="flex items-baseline justify-between gap-4">
-          <h2 className="text-sm font-semibold text-text">Collecting participants</h2>
-          <span className="font-mono text-xs text-text-muted">
-            {stats.current_min_per_variant} / {stats.required_per_variant} per variant
-          </span>
-        </div>
-        <ProgressBar value={stats.current_min_per_variant} max={stats.required_per_variant} />
-        <p className="text-xs text-text-muted">
-          Results unlock once every variant reaches {stats.required_per_variant} participants.
-          Test: two-proportion z-test, α = 0.05, power = 0.80, MDE = 10 pp.
-        </p>
-      </section>
-
-      {([
-        { name: 'Experiment 1 — List format', a: stats.list_a, b: stats.list_b },
-        { name: 'Experiment 2 — Button design', a: stats.button_a, b: stats.button_b },
-      ] as const).map(({ name, a, b }) => (
-        <section key={name} className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5">
-          <h2 className="text-sm font-semibold text-text">{name}</h2>
-          <ConversionBars a={a} b={b} />
-          <div className="flex gap-6 text-xs text-text-muted">
-            <span>A: {a.converted}/{a.assigned} ({(a.rate * 100).toFixed(1)}%)</span>
-            <span>B: {b.converted}/{b.assigned} ({(b.rate * 100).toFixed(1)}%)</span>
-          </div>
-        </section>
-      ))}
-    </div>
-  )
-}
-
-function FullView({ stats }: { stats: FullStats }) {
-  return (
-    <div className="flex flex-col gap-5">
-      <ExperimentCard
-        name="Experiment 1 — List format"
-        a={stats.list_a}
-        b={stats.list_b}
-        test={stats.list_test}
-      />
-      <ExperimentCard
-        name="Experiment 2 — Button design"
-        a={stats.button_a}
-        b={stats.button_b}
-        test={stats.button_test}
-      />
-    </div>
-  )
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
+
+const POLL_INTERVAL_MS = 30_000
 
 export default function StatsPage() {
   const router = useRouter()
@@ -211,16 +189,22 @@ export default function StatsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api.getStats()
-      .then(setStats)
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err)
-        if (msg.includes('403')) {
-          router.replace('/')
-        } else {
-          setError(msg)
-        }
-      })
+    function fetchStats() {
+      api.getStats()
+        .then(setStats)
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err)
+          if (msg.includes('403')) {
+            router.replace('/')
+          } else {
+            setError(msg)
+          }
+        })
+    }
+
+    fetchStats()
+    const interval = setInterval(fetchStats, POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
   }, [router])
 
   if (error) {
@@ -241,6 +225,8 @@ export default function StatsPage() {
     )
   }
 
+  const eitherUnlocked = stats.list_unlocked || stats.button_unlocked
+
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-12">
       <div className="flex w-full max-w-2xl flex-col gap-6">
@@ -259,11 +245,50 @@ export default function StatsPage() {
             ) : (
               'this experiment. '
             )}
-            Here's the data so far.
+            Here&apos;s the data so far.
           </p>
         </header>
 
-        {stats.unlocked ? <FullView stats={stats} /> : <RawView stats={stats} />}
+        {stats.list_unlocked && stats.list_test ? (
+          <ExperimentFullSection
+            name="Experiment 1 — List format"
+            a={stats.list_a}
+            b={stats.list_b}
+            test={stats.list_test}
+          />
+        ) : (
+          <ExperimentRawSection
+            name="Experiment 1 — List format"
+            a={stats.list_a}
+            b={stats.list_b}
+            currentMin={stats.list_current_min}
+            required={stats.required_per_variant}
+          />
+        )}
+
+        {stats.button_unlocked && stats.button_test ? (
+          <ExperimentFullSection
+            name="Experiment 2 — Button design"
+            a={stats.button_a}
+            b={stats.button_b}
+            test={stats.button_test}
+          />
+        ) : (
+          <ExperimentRawSection
+            name="Experiment 2 — Button design"
+            a={stats.button_a}
+            b={stats.button_b}
+            currentMin={stats.button_current_min}
+            required={stats.required_per_variant}
+          />
+        )}
+
+        {eitherUnlocked && (
+          <p className="text-xs text-text-muted border-t border-border pt-4">
+            Two simultaneous tests at α&nbsp;=&nbsp;0.05 each give a ~9.8% family-wise false-positive
+            rate. Results are exploratory — treat significance as a signal, not a verdict.
+          </p>
+        )}
 
       </div>
     </main>
