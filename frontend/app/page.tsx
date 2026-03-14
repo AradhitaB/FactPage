@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAssignment } from '@/lib/hooks/useAssignment'
 import { api } from '@/lib/api'
@@ -15,6 +15,11 @@ export default function Home() {
 
   // Tracks max depth reached — updated by onDepthChange without causing re-renders.
   // Read only at event-fire time (completion or button click).
+  const shuffledItems = useMemo(
+    () => [...LIST_ITEMS].sort(() => Math.random() - 0.5),
+    []
+  )
+
   const listDepthRef = useRef(0)
   const listDepthFiredRef = useRef(false)
 
@@ -77,9 +82,9 @@ export default function Home() {
 
         {/* List — variant determines presentation, not content */}
         {assignment.list_variant === 'A' ? (
-          <ScrollableList items={LIST_ITEMS} onComplete={handleListComplete} onDepthChange={handleDepthChange} />
+          <ScrollableList items={shuffledItems} onComplete={handleListComplete} onDepthChange={handleDepthChange} />
         ) : (
-          <ClickThroughList items={LIST_ITEMS} onComplete={handleListComplete} onDepthChange={handleDepthChange} />
+          <ClickThroughList items={shuffledItems} onComplete={handleListComplete} onDepthChange={handleDepthChange} />
         )}
 
         {/* CTA — variant determines visual treatment */}
