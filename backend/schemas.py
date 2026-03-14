@@ -16,6 +16,7 @@ class AssignmentResponse(BaseModel):
 class EventRequest(BaseModel):
     session_id: UUID  # Pydantic rejects malformed UUIDs before they reach the DB
     event_type: EventType
+    value: float | None = None
 
 
 class EventResponse(BaseModel):
@@ -23,6 +24,12 @@ class EventResponse(BaseModel):
 
 
 # ─── Stats ────────────────────────────────────────────────────────────────────
+
+class VariantDepth(BaseModel):
+    n: int           # sessions with a recorded depth value
+    mean: float      # average depth among those sessions (0.0–1.0)
+    coverage: float  # n / total_assigned — fraction of sessions with a depth recording
+
 
 class VariantCounts(BaseModel):
     assigned: int
@@ -58,3 +65,5 @@ class StatsResponse(BaseModel):
     button_unlocked: bool
     list_test: TestResult | None = None
     button_test: TestResult | None = None
+    list_depth_a: VariantDepth
+    list_depth_b: VariantDepth

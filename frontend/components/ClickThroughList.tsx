@@ -6,16 +6,24 @@ import type { ListItem } from '@/lib/facts'
 interface ClickThroughListProps {
   items: ListItem[]
   onComplete: () => void
+  onDepthChange?: (depth: number) => void
 }
 
-export default function ClickThroughList({ items, onComplete }: ClickThroughListProps) {
+export default function ClickThroughList({ items, onComplete, onDepthChange }: ClickThroughListProps) {
   const [index, setIndex] = useState(0)
   const completedRef = useRef(false)
+  const onDepthChangeRef = useRef(onDepthChange)
+  useEffect(() => { onDepthChangeRef.current = onDepthChange }, [onDepthChange])
 
   const current = items[index]
   const isFirst = index === 0
   const isLast = index === items.length - 1
   const progress = ((index + 1) / items.length) * 100
+
+  // Report depth as fraction of items seen whenever index changes
+  useEffect(() => {
+    onDepthChangeRef.current?.((index + 1) / items.length)
+  }, [index, items.length])
 
   // Fire onComplete exactly once when the user navigates to the last item
   useEffect(() => {

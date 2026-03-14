@@ -7,11 +7,12 @@ import type { ListItem } from '@/lib/facts'
 interface ScrollableListProps {
   items: ListItem[]
   onComplete: () => void
+  onDepthChange?: (depth: number) => void
 }
 
-export default function ScrollableList({ items, onComplete }: ScrollableListProps) {
+export default function ScrollableList({ items, onComplete, onDepthChange }: ScrollableListProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { depth } = useScrollDepth(containerRef, 0.8, onComplete)
+  const { depth } = useScrollDepth(containerRef, 0.8, onComplete, onDepthChange)
 
   return (
     <div className="relative flex flex-col rounded-xl border border-border bg-surface overflow-hidden">

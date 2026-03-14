@@ -1,7 +1,8 @@
 import uuid
 import enum
 from datetime import datetime, timezone
-from sqlalchemy import String, DateTime, Enum, ForeignKey
+from typing import Optional
+from sqlalchemy import String, DateTime, Enum, ForeignKey, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 
@@ -14,6 +15,7 @@ class Variant(str, enum.Enum):
 class EventType(str, enum.Enum):
     list_complete = "list_complete"
     button_click = "button_click"
+    list_depth = "list_depth"
 
 
 class Session(Base):
@@ -41,6 +43,7 @@ class Event(Base):
         String, ForeignKey("sessions.id"), nullable=False
     )
     event_type: Mapped[EventType] = mapped_column(Enum(EventType), nullable=False)
+    value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc)
     )

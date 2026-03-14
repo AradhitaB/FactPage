@@ -28,10 +28,10 @@ export const api = {
   getAssignment: (): Promise<Assignment> =>
     apiFetch('/api/assignment'),
 
-  recordEvent: (sessionId: string, eventType: EventType): Promise<{ ok: boolean }> =>
+  recordEvent: (sessionId: string, eventType: EventType, value?: number): Promise<{ ok: boolean }> =>
     apiFetch('/api/events', {
       method: 'POST',
-      body: JSON.stringify({ session_id: sessionId, event_type: eventType }),
+      body: JSON.stringify({ session_id: sessionId, event_type: eventType, value: value ?? null }),
     }),
 
   getStats: (): Promise<Stats> =>

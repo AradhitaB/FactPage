@@ -1,7 +1,7 @@
 // ─── A/B Assignment ───────────────────────────────────────────────────────────
 
 export type Variant = 'A' | 'B'
-export type EventType = 'list_complete' | 'button_click'
+export type EventType = 'list_complete' | 'button_click' | 'list_depth'
 
 export interface Assignment {
   session_id: string
@@ -10,6 +10,12 @@ export interface Assignment {
 }
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
+
+export interface VariantDepth {
+  n: number        // sessions with a recorded depth value
+  mean: number     // average depth among those sessions (0.0–1.0)
+  coverage: number // n / total_assigned
+}
 
 export interface VariantCounts {
   assigned: number
@@ -39,4 +45,6 @@ export interface Stats {
   button_unlocked: boolean
   list_test?: TestResult     // present only when list_unlocked
   button_test?: TestResult   // present only when button_unlocked
+  list_depth_a: VariantDepth
+  list_depth_b: VariantDepth
 }

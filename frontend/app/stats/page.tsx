@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { useAssignment } from '@/lib/hooks/useAssignment'
-import type { Stats, VariantCounts, TestResult } from '@/types'
+import type { Stats, VariantCounts, VariantDepth, TestResult } from '@/types'
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
@@ -178,6 +178,33 @@ function fmtPct(v: number): string {
   return `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`
 }
 
+function DepthSection({ a, b }: { a: VariantDepth; b: VariantDepth }) {
+  const hasData = a.n > 0 || b.n > 0
+  return (
+    <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
+      <h2 className="text-sm font-semibold text-text">Depth reached — Experiment 1</h2>
+      {hasData ? (
+        <>
+          <div className="flex flex-col gap-1 text-xs text-text-muted">
+            {([['A', a], ['B', b]] as const).map(([label, d]) => (
+              <div key={label} className="flex gap-4">
+                <span className="w-4 shrink-0 font-mono">{label}</span>
+                <span>avg <span className="font-mono text-text">{(d.mean * 100).toFixed(0)}%</span></span>
+                <span>coverage <span className="font-mono text-text">{(d.coverage * 100).toFixed(0)}%</span> ({d.n} sessions)</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-text-muted">
+            Coverage = sessions with a recorded depth value ÷ total assigned. Only users who completed or clicked the CTA are included in the average — tab-closers are not captured.
+          </p>
+        </>
+      ) : (
+        <p className="text-xs text-text-muted">No depth data yet.</p>
+      )}
+    </section>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const POLL_INTERVAL_MS = 30_000
@@ -282,6 +309,8 @@ export default function StatsPage() {
             required={stats.required_per_variant}
           />
         )}
+
+        <DepthSection a={stats.list_depth_a} b={stats.list_depth_b} />
 
         {eitherUnlocked && (
           <p className="text-xs text-text-muted border-t border-border pt-4">

@@ -42,7 +42,7 @@ def record_event(
     if already_recorded:
         return EventResponse(ok=True)
 
-    event = Event(session_id=session_id_str, event_type=body.event_type)
+    event = Event(session_id=session_id_str, event_type=body.event_type, value=body.value)
     db.add(event)
     db.commit()
     return EventResponse(ok=True)

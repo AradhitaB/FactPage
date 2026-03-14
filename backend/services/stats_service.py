@@ -7,7 +7,7 @@ from statsmodels.stats.power import NormalIndPower
 from sqlalchemy.orm import Session as DBSession
 import config
 from models import Session, Event, Variant, EventType
-from schemas import VariantCounts, TestResult, StatsResponse
+from schemas import VariantCounts, VariantDepth, TestResult, StatsResponse
 
 ALPHA = config.ALPHA
 POWER = config.POWER
@@ -61,6 +61,44 @@ def _query_counts(
     return result
 
 
+def _query_depth(db: DBSession) -> dict[Variant, VariantDepth]:
+    """
+    Single GROUP BY query returning depth stats per list variant.
+
+    LEFT OUTER JOIN on list_depth events only — sessions with no depth recording
+    still appear with n=0. func.count(Event.id) counts only non-NULL rows (i.e.
+    sessions that have a list_depth event); func.avg(Event.value) is NULL when n=0.
+    Coverage = n / assigned — the fraction of sessions with a recorded depth value.
+    """
+    rows = (
+        db.query(
+            Session.list_variant,
+            func.count(Session.id).label("assigned"),
+            func.count(Event.id).label("n"),
+            func.avg(Event.value).label("mean_depth"),
+        )
+        .outerjoin(
+            Event,
+            (Event.session_id == Session.id) & (Event.event_type == EventType.list_depth),
+        )
+        .group_by(Session.list_variant)
+        .all()
+    )
+
+    result = {
+        Variant.A: VariantDepth(n=0, mean=0.0, coverage=0.0),
+        Variant.B: VariantDepth(n=0, mean=0.0, coverage=0.0),
+    }
+    for variant, assigned, n, mean_depth in rows:
+        coverage = n / assigned if assigned > 0 else 0.0
+        result[variant] = VariantDepth(
+            n=n,
+            mean=round(float(mean_depth), 4) if mean_depth is not None else 0.0,
+            coverage=round(coverage, 4),
+        )
+    return result
+
+
 def _run_test(a: VariantCounts, b: VariantCounts) -> TestResult:
     """Two-proportion z-test with 95% CI and Cohen's h effect size."""
     if a.assigned == 0 or b.assigned == 0:
@@ -110,6 +148,7 @@ def _run_test(a: VariantCounts, b: VariantCounts) -> TestResult:
 def get_stats(db: DBSession) -> StatsResponse:
     list_counts = _query_counts(db, Session.list_variant, EventType.list_complete)
     button_counts = _query_counts(db, Session.button_variant, EventType.button_click)
+    depth_counts = _query_depth(db)
 
     list_a, list_b = list_counts[Variant.A], list_counts[Variant.B]
     button_a, button_b = button_counts[Variant.A], button_counts[Variant.B]
@@ -132,4 +171,6 @@ def get_stats(db: DBSession) -> StatsResponse:
         button_unlocked=button_unlocked,
         list_test=_run_test(list_a, list_b) if list_unlocked else None,
         button_test=_run_test(button_a, button_b) if button_unlocked else None,
+        list_depth_a=depth_counts[Variant.A],
+        list_depth_b=depth_counts[Variant.B],
     )

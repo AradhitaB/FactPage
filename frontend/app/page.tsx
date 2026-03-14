@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAssignment } from '@/lib/hooks/useAssignment'
 import { api } from '@/lib/api'
@@ -12,15 +13,32 @@ export default function Home() {
   const router = useRouter()
   const { assignment, isLoading, error } = useAssignment()
 
-  // Fire list_complete event — errors are swallowed so they never block the UI
+  // Tracks max depth reached — updated by onDepthChange without causing re-renders.
+  // Read only at event-fire time (completion or button click).
+  const listDepthRef = useRef(0)
+  const listDepthFiredRef = useRef(false)
+
+  const handleDepthChange = (depth: number) => {
+    listDepthRef.current = Math.max(listDepthRef.current, depth)
+  }
+
+  // Fire list_complete + list_depth at completion — errors are swallowed so they never block the UI
   const handleListComplete = () => {
     if (!assignment) return
     api.recordEvent(assignment.session_id, 'list_complete').catch((err) => console.error('Failed to record event:', err))
+    if (!listDepthFiredRef.current) {
+      listDepthFiredRef.current = true
+      api.recordEvent(assignment.session_id, 'list_depth', listDepthRef.current).catch((err) => console.error('Failed to record event:', err))
+    }
   }
 
-  // Fire button_click then navigate immediately — recording is best-effort
+  // Fire list_depth (if not already) then button_click, then navigate — best-effort
   const handleButtonClick = () => {
     if (!assignment) return
+    if (!listDepthFiredRef.current) {
+      listDepthFiredRef.current = true
+      api.recordEvent(assignment.session_id, 'list_depth', listDepthRef.current).catch((err) => console.error('Failed to record event:', err))
+    }
     api.recordEvent(assignment.session_id, 'button_click').catch((err) => console.error('Failed to record event:', err))
     router.push('/stats')
   }
@@ -59,9 +77,9 @@ export default function Home() {
 
         {/* List — variant determines presentation, not content */}
         {assignment.list_variant === 'A' ? (
-          <ScrollableList items={LIST_ITEMS} onComplete={handleListComplete} />
+          <ScrollableList items={LIST_ITEMS} onComplete={handleListComplete} onDepthChange={handleDepthChange} />
         ) : (
-          <ClickThroughList items={LIST_ITEMS} onComplete={handleListComplete} />
+          <ClickThroughList items={LIST_ITEMS} onComplete={handleListComplete} onDepthChange={handleDepthChange} />
         )}
 
         {/* CTA — variant determines visual treatment */}
