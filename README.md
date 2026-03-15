@@ -59,6 +59,12 @@ To run tests, from root: `make test`
 - `make frontend` is the equivalent of running `npm --prefix frontend run dev`
 - `make test` is the equivalent of running `pytest` at root
 
+## Development Version
+
+You can also run FactPage in development mode to view the different A/B test options and what the statistics page would look like with sample data. This is useful for development because FactPage stores cookies to ensure each user gets the same A/B test for 7 days.
+1. `make dev-backend`    `# terminal 1 — uvicorn with --reload`
+2. `make dev-frontend`   `# terminal 2 — next dev`
+
 # Coming Next
 
 - Real Facts

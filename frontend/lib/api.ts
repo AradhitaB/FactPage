@@ -36,4 +36,11 @@ export const api = {
 
   getStats: (): Promise<Stats> =>
     apiFetch('/api/stats'),
+
+  // Dev-only — only call these when process.env.NODE_ENV === 'development'
+  devSeed: (): Promise<{ ok: boolean }> =>
+    apiFetch('/api/dev/seed', { method: 'POST' }),
+
+  devClear: (): Promise<{ ok: boolean }> =>
+    apiFetch('/api/dev/clear', { method: 'POST' }),
 }

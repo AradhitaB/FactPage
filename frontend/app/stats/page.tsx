@@ -208,31 +208,66 @@ function DepthSection({ a, b }: { a: VariantDepth; b: VariantDepth }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const POLL_INTERVAL_MS = 30_000
+const DEMO_KEY = 'factpage_demo'
+const isDev = process.env.NODE_ENV === 'development'
 
 export default function StatsPage() {
   const router = useRouter()
   const { assignment } = useAssignment()
   const [stats, setStats] = useState<Stats | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isDemo, setIsDemo] = useState(false)
+  const [devBusy, setDevBusy] = useState(false)
 
   useEffect(() => {
-    function fetchStats() {
-      api.getStats()
-        .then(setStats)
-        .catch((err: unknown) => {
-          const msg = err instanceof Error ? err.message : String(err)
-          if (msg.includes('403')) {
-            router.replace('/')
-          } else {
-            setError(msg)
-          }
-        })
-    }
+    if (!isDev) return
+    const alreadyDemo = localStorage.getItem(DEMO_KEY) === 'true'
+    setIsDemo(alreadyDemo)
+    if (!alreadyDemo) handleLoadDemo()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  function fetchStats() {
+    api.getStats()
+      .then(setStats)
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('403')) {
+          router.replace('/')
+        } else {
+          setError(msg)
+        }
+      })
+  }
+
+  useEffect(() => {
     fetchStats()
     const interval = setInterval(fetchStats, POLL_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [router])
+
+  async function handleLoadDemo() {
+    setDevBusy(true)
+    try {
+      await api.devSeed()
+      localStorage.setItem(DEMO_KEY, 'true')
+      setIsDemo(true)
+      fetchStats()
+    } finally {
+      setDevBusy(false)
+    }
+  }
+
+  async function handleClearData() {
+    setDevBusy(true)
+    try {
+      await api.devClear()
+      localStorage.removeItem(DEMO_KEY)
+      // Session was deleted — navigate home so a fresh session is created
+      router.push('/')
+    } finally {
+      setDevBusy(false)
+    }
+  }
 
   if (error) {
     return (
@@ -256,9 +291,24 @@ export default function StatsPage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-12">
-      <div className="flex w-full max-w-2xl flex-col gap-6">
+
+      {/* Demo banner — fixed, full-viewport-width, very visible */}
+      {isDev && isDemo && (
+        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-3 bg-amber-400 px-4 py-3 text-center text-amber-950">
+          <span className="text-lg font-black tracking-widest uppercase">⚠ Demo Data</span>
+          <span className="text-sm font-medium">— 500 synthetic sessions, not real users</span>
+        </div>
+      )}
+
+      <div className={`flex w-full max-w-2xl flex-col gap-6${isDev && isDemo ? ' mt-14' : ''}`}>
 
         <header className="flex flex-col gap-1">
+          <button
+            onClick={() => router.push('/')}
+            className="mb-2 self-start font-mono text-xs text-text-muted/60 transition-colors hover:text-text-muted"
+          >
+            ← back to list
+          </button>
           <h1 className="text-2xl font-semibold tracking-tight text-text">Live Results</h1>
           <p className="text-sm text-text-muted">
             You were in{' '}
@@ -317,6 +367,29 @@ export default function StatsPage() {
             Two simultaneous tests at α&nbsp;=&nbsp;0.05 each give a ~9.8% family-wise false-positive
             rate. Results are exploratory — treat significance as a signal, not a verdict.
           </p>
+        )}
+
+        {/* Dev controls */}
+        {isDev && (
+          <div className="flex items-center justify-between rounded-lg border border-border bg-surface p-3 text-xs">
+            <span className="font-mono text-text-muted">dev · data</span>
+            <div className="flex gap-2">
+              <button
+                onClick={handleLoadDemo}
+                disabled={devBusy}
+                className="rounded px-3 py-1 font-medium text-amber-400 ring-1 ring-amber-400/40 transition-colors hover:bg-amber-400/10 disabled:opacity-40"
+              >
+                {devBusy ? 'Loading…' : 'Load demo'}
+              </button>
+              <button
+                onClick={handleClearData}
+                disabled={devBusy}
+                className="rounded px-3 py-1 font-medium text-text-muted ring-1 ring-border transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-40"
+              >
+                Clear data
+              </button>
+            </div>
+          </div>
         )}
 
       </div>

@@ -1,4 +1,12 @@
-.PHONY: backend frontend test test-backend test-frontend
+.PHONY: backend frontend dev dev-backend dev-frontend test test-backend test-frontend
+
+dev: dev-backend dev-frontend
+
+dev-backend:
+	cd backend && python seed_demo_data.py --clear
+	uvicorn main:app --app-dir backend --reload
+
+dev-frontend: frontend
 
 backend:
 	uvicorn main:app --app-dir backend --reload

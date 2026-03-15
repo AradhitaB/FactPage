@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAssignment } from '@/lib/hooks/useAssignment'
 import { api } from '@/lib/api'
@@ -19,6 +19,21 @@ export default function Home() {
     () => [...LIST_ITEMS].sort(() => Math.random() - 0.5),
     []
   )
+
+  const isDev = process.env.NODE_ENV === 'development'
+
+  // Dev-only variant overrides — do not affect stored assignment or event recording
+  const [devList, setDevList] = useState<'A' | 'B' | null>(null)
+  const [devButton, setDevButton] = useState<'A' | 'B' | null>(null)
+  useEffect(() => {
+    if (assignment) {
+      setDevList(assignment.list_variant as 'A' | 'B')
+      setDevButton(assignment.button_variant as 'A' | 'B')
+    }
+  }, [assignment])
+
+  const activeList = (isDev && devList) ? devList : assignment?.list_variant
+  const activeButton = (isDev && devButton) ? devButton : assignment?.button_variant
 
   const listDepthRef = useRef(0)
   const listDepthFiredRef = useRef(false)
@@ -81,14 +96,45 @@ export default function Home() {
         </header>
 
         {/* List — variant determines presentation, not content */}
-        {assignment.list_variant === 'A' ? (
+        {activeList === 'A' ? (
           <ScrollableList items={shuffledItems} onComplete={handleListComplete} onDepthChange={handleDepthChange} />
         ) : (
           <ClickThroughList items={shuffledItems} onComplete={handleListComplete} onDepthChange={handleDepthChange} />
         )}
 
         {/* CTA — variant determines visual treatment */}
-        <CTAButton variant={assignment.button_variant} onClick={handleButtonClick} />
+        <CTAButton variant={activeButton ?? assignment.button_variant} onClick={handleButtonClick} />
+
+        {/* Dev-only variant switcher */}
+        {isDev && devList && devButton && (
+          <div className="fixed bottom-4 right-4 flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 text-xs shadow-lg">
+            <span className="font-mono text-text-muted">dev · variants</span>
+            <div className="flex gap-2">
+              <span className="text-text-muted">List</span>
+              {(['A', 'B'] as const).map(v => (
+                <button
+                  key={v}
+                  onClick={() => setDevList(v)}
+                  className={`rounded px-2 py-0.5 font-mono transition-colors ${devList === v ? 'bg-accent text-bg font-semibold' : 'bg-surface-2 text-text-muted hover:text-text'}`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <span className="text-text-muted">Button</span>
+              {(['A', 'B'] as const).map(v => (
+                <button
+                  key={v}
+                  onClick={() => setDevButton(v)}
+                  className={`rounded px-2 py-0.5 font-mono transition-colors ${devButton === v ? 'bg-accent text-bg font-semibold' : 'bg-surface-2 text-text-muted hover:text-text'}`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
     </main>

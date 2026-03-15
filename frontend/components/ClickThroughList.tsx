@@ -51,8 +51,8 @@ export default function ClickThroughList({ items, onComplete, onDepthChange }: C
         </span>
       </div>
 
-      {/* Content — fixed height so the card doesn't jump */}
-      <div className="flex h-[320px] flex-col justify-center px-6 py-6 sm:h-[420px]">
+      {/* Content */}
+      <div className="flex flex-col px-6 py-8">
         <span className="mb-2 font-mono text-xs text-accent">
           {String(index + 1).padStart(2, '0')}
         </span>

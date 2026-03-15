@@ -12,6 +12,8 @@ from slowapi.errors import RateLimitExceeded
 
 from database import engine, Base, SessionLocal
 from routers import assignment, events, stats
+if config.ENVIRONMENT == "development":
+    from routers import dev
 from services.ab_service import cleanup_old_sessions
 
 logging.basicConfig(
@@ -82,6 +84,8 @@ app.add_middleware(
 app.include_router(assignment.router)
 app.include_router(events.router)
 app.include_router(stats.router)
+if config.ENVIRONMENT == "development":
+    app.include_router(dev.router)
 
 
 @app.get("/health")
