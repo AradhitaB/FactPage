@@ -14,7 +14,7 @@ _parsed = urlparse(FRONTEND_URL)
 if _parsed.scheme not in ("http", "https") or not _parsed.netloc:
     raise ValueError(f"FRONTEND_URL must be a valid http/https URL, got: {FRONTEND_URL!r}")
 
-ALPHA: float = float(os.getenv("ALPHA", "0.05"))
+ALPHA: float = float(os.getenv("ALPHA", "0.025"))
 if not (0 < ALPHA < 1):
     raise ValueError(f"ALPHA must be in (0, 1), got: {ALPHA}")
 

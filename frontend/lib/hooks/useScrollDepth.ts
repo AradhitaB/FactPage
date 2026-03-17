@@ -11,6 +11,7 @@ export function useScrollDepth(
   containerRef: React.RefObject<HTMLElement | null>,
   threshold = 0.8,
   onComplete?: () => void,
+  onDepthChange?: (depth: number) => void,
 ): UseScrollDepthResult {
   const [depth, setDepth] = useState(0)
   const [completed, setCompleted] = useState(false)
@@ -18,7 +19,9 @@ export function useScrollDepth(
   // Refs prevent stale closures inside the scroll listener
   const completedRef = useRef(false)
   const onCompleteRef = useRef(onComplete)
+  const onDepthChangeRef = useRef(onDepthChange)
   useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
+  useEffect(() => { onDepthChangeRef.current = onDepthChange }, [onDepthChange])
 
   useEffect(() => {
     const el = containerRef.current
@@ -32,6 +35,7 @@ export function useScrollDepth(
 
       const current = el!.scrollTop / scrollable
       setDepth(current)
+      onDepthChangeRef.current?.(current)
 
       if (current >= threshold) {
         completedRef.current = true

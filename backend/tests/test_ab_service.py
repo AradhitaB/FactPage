@@ -1,7 +1,8 @@
 from collections import Counter
+from datetime import datetime, timedelta, timezone
 
-from models import Variant
-from services.ab_service import assign_variants, create_session, get_session
+from models import Event, EventType, Variant
+from services.ab_service import assign_variants, cleanup_old_sessions, create_session, get_session
 
 
 def test_assign_variants_returns_valid_variants():
@@ -72,3 +73,41 @@ def test_each_session_gets_own_assignment(test_db):
     fetched_s1 = get_session(test_db, s1.id)
     fetched_s2 = get_session(test_db, s2.id)
     assert fetched_s1.id != fetched_s2.id
+
+
+def test_cleanup_removes_old_sessions(test_db):
+    old = create_session(test_db)
+    old_id = old.id  # capture before cleanup expires the identity map entry
+    old.created_at = datetime.now(timezone.utc) - timedelta(days=31)
+    test_db.commit()
+
+    recent = create_session(test_db)
+
+    deleted = cleanup_old_sessions(test_db)
+
+    assert deleted == 1
+    assert get_session(test_db, old_id) is None
+    assert get_session(test_db, recent.id) is not None
+
+
+def test_cleanup_removes_events_with_old_sessions(test_db):
+    old = create_session(test_db)
+    old_id = old.id  # capture before cleanup expires the identity map entry
+    old.created_at = datetime.now(timezone.utc) - timedelta(days=31)
+    test_db.flush()
+    test_db.add(Event(session_id=old_id, event_type=EventType.button_click))
+    test_db.commit()
+
+    cleanup_old_sessions(test_db)
+
+    remaining = test_db.query(Event).filter(Event.session_id == old_id).first()
+    assert remaining is None
+
+
+def test_cleanup_leaves_recent_sessions_untouched(test_db):
+    for _ in range(3):
+        create_session(test_db)
+
+    deleted = cleanup_old_sessions(test_db)
+
+    assert deleted == 0

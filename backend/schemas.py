@@ -16,13 +16,14 @@ class AssignmentResponse(BaseModel):
 class EventRequest(BaseModel):
     session_id: UUID  # Pydantic rejects malformed UUIDs before they reach the DB
     event_type: EventType
+    value: float | None = None
 
 
 class EventResponse(BaseModel):
     ok: bool
 
 
-# ─── Stats ────────────────────────────────────────────────────────────────────
+# ─── Stats primitives ─────────────────────────────────────────────────────────
 
 class VariantCounts(BaseModel):
     assigned: int
@@ -39,6 +40,40 @@ class TestResult(BaseModel):
     power: float    # observed power given current n
     significant: bool
 
+
+# ─── Depth histogram ──────────────────────────────────────────────────────────
+
+class DepthBucket(BaseModel):
+    facts: int   # 0–20 (round(depth * TOTAL_FACTS))
+    count: int   # number of sessions that reached exactly this many facts
+
+
+class DepthHistogram(BaseModel):
+    """Distribution of facts read for one variant, optionally sliced by demographic group."""
+    overall: list[DepthBucket]
+    age_range: dict[str, list[DepthBucket]]
+    technical_background: dict[str, list[DepthBucket]]
+    prior_knowledge: dict[str, list[DepthBucket]]
+
+
+# ─── Demographics Stats ────────────────────────────────────────────────────────
+
+class DemographicGroup(BaseModel):
+    label: str     # e.g. "18_24", "technical"
+    n: int         # sessions in this group (with demographics recorded)
+    completed: int # sessions in this group with a list_complete event
+    rate: float    # completed / n
+
+
+class DemographicsStats(BaseModel):
+    total_responses: int
+    age_range: list[DemographicGroup]
+    technical_background: list[DemographicGroup]
+    prior_knowledge: list[DemographicGroup]
+    device_type: list[DemographicGroup]
+
+
+# ─── Stats ────────────────────────────────────────────────────────────────────
 
 class StatsResponse(BaseModel):
     """
@@ -58,3 +93,24 @@ class StatsResponse(BaseModel):
     button_unlocked: bool
     list_test: TestResult | None = None
     button_test: TestResult | None = None
+    depth_histogram_a: DepthHistogram
+    depth_histogram_b: DepthHistogram
+    demographics: DemographicsStats | None = None
+    earliest_real_session_at: str | None = None  # ISO timestamp of first non-synthetic session
+
+
+# ─── Demographics ──────────────────────────────────────────────────────────────
+
+class DemographicsRequest(BaseModel):
+    age_range: str | None = None
+    technical_background: str | None = None
+    prior_knowledge: str | None = None
+    device_type: str | None = None
+
+
+class DemographicsResponse(BaseModel):
+    submitted: bool
+    age_range: str | None = None
+    technical_background: str | None = None
+    prior_knowledge: str | None = None
+    device_type: str | None = None

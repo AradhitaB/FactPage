@@ -6,16 +6,24 @@ import type { ListItem } from '@/lib/facts'
 interface ClickThroughListProps {
   items: ListItem[]
   onComplete: () => void
+  onDepthChange?: (depth: number) => void
 }
 
-export default function ClickThroughList({ items, onComplete }: ClickThroughListProps) {
+export default function ClickThroughList({ items, onComplete, onDepthChange }: ClickThroughListProps) {
   const [index, setIndex] = useState(0)
   const completedRef = useRef(false)
+  const onDepthChangeRef = useRef(onDepthChange)
+  useEffect(() => { onDepthChangeRef.current = onDepthChange }, [onDepthChange])
 
   const current = items[index]
   const isFirst = index === 0
   const isLast = index === items.length - 1
   const progress = ((index + 1) / items.length) * 100
+
+  // Report depth as fraction of items seen whenever index changes
+  useEffect(() => {
+    onDepthChangeRef.current?.((index + 1) / items.length)
+  }, [index, items.length])
 
   // Fire onComplete exactly once when the user navigates to the last item
   useEffect(() => {
@@ -43,8 +51,8 @@ export default function ClickThroughList({ items, onComplete }: ClickThroughList
         </span>
       </div>
 
-      {/* Content — fixed height so the card doesn't jump */}
-      <div className="flex h-[320px] flex-col justify-center px-6 py-6 sm:h-[420px]">
+      {/* Content */}
+      <div className="flex flex-col px-6 py-8">
         <span className="mb-2 font-mono text-xs text-accent">
           {String(index + 1).padStart(2, '0')}
         </span>

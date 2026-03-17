@@ -1,7 +1,7 @@
 // ─── A/B Assignment ───────────────────────────────────────────────────────────
 
 export type Variant = 'A' | 'B'
-export type EventType = 'list_complete' | 'button_click'
+export type EventType = 'list_complete' | 'button_click' | 'list_depth'
 
 export interface Assignment {
   session_id: string
@@ -27,6 +27,33 @@ export interface TestResult {
   significant: boolean
 }
 
+export interface DepthBucket {
+  facts: number  // 0–20
+  count: number  // sessions that reached exactly this many facts
+}
+
+export interface DepthHistogram {
+  overall: DepthBucket[]
+  age_range: Record<string, DepthBucket[]>
+  technical_background: Record<string, DepthBucket[]>
+  prior_knowledge: Record<string, DepthBucket[]>
+}
+
+export interface DemographicGroup {
+  label: string
+  n: number
+  completed: number
+  rate: number
+}
+
+export interface DemographicsStats {
+  total_responses: number
+  age_range: DemographicGroup[]
+  technical_background: DemographicGroup[]
+  prior_knowledge: DemographicGroup[]
+  device_type: DemographicGroup[]
+}
+
 export interface Stats {
   required_per_variant: number
   list_a: VariantCounts
@@ -39,4 +66,25 @@ export interface Stats {
   button_unlocked: boolean
   list_test?: TestResult     // present only when list_unlocked
   button_test?: TestResult   // present only when button_unlocked
+  depth_histogram_a: DepthHistogram
+  depth_histogram_b: DepthHistogram
+  demographics?: DemographicsStats
+  earliest_real_session_at?: string  // ISO timestamp of first non-synthetic session
+}
+
+// ─── Demographics ──────────────────────────────────────────────────────────────
+
+export interface DemographicsSubmit {
+  age_range: string | null
+  technical_background: string | null
+  prior_knowledge: string | null
+  device_type: string | null
+}
+
+export interface DemographicsResponse {
+  submitted: boolean
+  age_range: string | null
+  technical_background: string | null
+  prior_knowledge: string | null
+  device_type: string | null
 }
