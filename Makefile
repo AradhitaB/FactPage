@@ -6,7 +6,8 @@ dev-backend:
 	cd backend && python seed_demo_data.py --clear
 	uvicorn main:app --app-dir backend --reload
 
-dev-frontend: frontend
+dev-frontend:
+	NEXT_PUBLIC_DEV_TOOLS=true npm --prefix frontend run dev
 
 backend:
 	uvicorn main:app --app-dir backend --reload

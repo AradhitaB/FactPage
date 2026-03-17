@@ -1,72 +1,110 @@
 # FactPage
 
-FactPage is a very benign fact-browsing page. Look through Facts until you are bored or we run out of new Facts. Then, click on a button to get more Facts... or rather stats about users browsing fact page.
+A live A/B testing experiment disguised as a fact-browsing page. Visitors read through a list of facts, click a button to see the results and discover stats from the experiment they were a part of.
 
-Each user is presented with a webpage that has one of four possible design combinations. Interactions with the page are recorded and used to do a nifty A/B test that users are welcome to peruse. 
+Each visitor is secretly assigned to one of four design combinations across two simultaneous experiments. Their interactions are recorded, and the stats page shows live results once enough data has been collected.
 
-Seeing empty stats? Don't worry, we just haven't gotten enough users yet. FactPage will grow as the users do. *Note: To preview stats locally without real users, run `python seed_demo_data.py` from the `backend/` directory.*
+# Experiments
 
-# How it works
+Each visitor is randomly assigned to one variant per experiment. Conversion is measured as clicking "See the Results".
 
-Mix together a SQLite database, a fastAPI+uvicorn supported backend, some analytics and a Next.js frontend. Et voila - FactPage.
+| # | Name | A | B | Hypothesis |
+|---|------|---|---|------------|
+| 1 | List format | Snap-scroll (swipe/scroll to advance) | Click-through (Next/Back buttons) | Explicit button navigation creates more intentional interaction than passive scrolling, increasing the proportion of users who click through to results |
+| 2 | Button design | Filled/solid button | Outlined/ghost button | A high-contrast filled button has stronger visual salience and drives higher click-through than a subdued outline style |
 
-## SQLite
+Both tests use a two-proportion z-test (α = 0.025 per test, Bonferroni-corrected for 2 simultaneous comparisons). The results page unlocks once each variant accumulates ~234 sessions (pre-specified power analysis: 80% power to detect a 10 pp lift from a 50% baseline).
 
-- Used to store sessions and events
-- `backend/factpage.db` is created automatically on the first run
+# How the page works
 
-## Backend
+1. A visitor lands on the main page and is silently assigned to one list variant (A or B) and one button variant (A or B) — four possible combinations total.
+2. Their assignment is stored server-side, tied to an httpOnly session cookie that persists for 7 days. Repeat visits always return the same variants.
+3. They browse the facts. Scroll depth is tracked continuously. When they reach the end (scroll ≥ 80% / last item clicked), a `list_complete` event fires.
+4. They click "See the Results". A `button_click` event fires. If depth wasn't already recorded, it's captured here too.
+5. The stats page shows which variant they were in, prompts an optional demographic survey, then displays live experiment results.
+6. Results are hidden behind a progress threshold — raw counts and a progress bar are shown until each variant has enough sessions. Once unlocked, full z-test output appears: p-value, z-stat, 95% CI, Cohen's h, and observed power.
 
-- `/api/assignment/` - assigns A/B testing variants
-- `/api/events/` - records user interactions with the page
-- `/api/stats/` - returns live experiment results
+Stats that haven't reached threshold yet show real data at reduced opacity. Toggle **Sample** on any card to preview what the full results will look like once the experiment concludes.
 
-## Analytics
+# How it was built
 
-- Two proportion z-test per experiment
-- Unlocks once each variant has ~197 independent sessions (power analysis: α=0.05, power=0.80, MDE=10%)
-- Stats recomputed on every request or 30s auto-refresh
+| Layer | Stack |
+|---|---|
+| Frontend | Next.js (App Router) + TypeScript + Tailwind CSS v4 |
+| Backend | Python + FastAPI + uvicorn |
+| Database | SQLite via SQLAlchemy ORM |
+| Statistics | `statsmodels` (z-test, power analysis), `scipy`, `numpy` |
+| Rate limiting | `slowapi` |
+| Hosting | Vercel (frontend) + Render (backend) |
 
-## Next.js
+### Key backend endpoints
 
-- App router
-    - *Main* page hosts the Facts in the assigned variant, either list or button
-    - *Stats* shows live results with 30s auto-refresh
+| Endpoint | What it does |
+|---|---|
+| `GET /api/assignment` | Assigns (or retrieves) variant pair for the session |
+| `POST /api/events` | Records `list_complete`, `button_click`, `list_depth` events |
+| `GET /api/demographics` | Returns whether current session submitted the survey |
+| `POST /api/demographics` | Submits optional demographic survey (idempotent) |
+| `GET /api/stats` | Returns live experiment results (requires valid session) |
 
-# Running FactPage
+### Statistical pipeline
 
-Prerequisites: Python 3.11+ and Node 18+
+- Power analysis runs once at startup to compute `REQUIRED_PER_VARIANT` (~234 at default settings)
+- On each `/api/stats` request: two GROUP BY queries count assignments and conversions per variant
+- If threshold is met: `proportions_ztest` + `proportion_effectsize` (Cohen's h) + observed power
+- All four stats queries filter `is_synthetic = False` — seeded demo data is permanently invisible to the live results
 
-1. Copy and fill in env files:
-   - `cp backend/.env.example backend/.env`
-   - `cp frontend/.env.local.example frontend/.env.local`
+# Running locally
 
-2. Install dependencies (once):
-   - Backend: `python -m venv .venv && source .venv/bin/activate && pip install -r backend/requirements.txt`
-   - Frontend: `npm install --prefix frontend`
+**Prerequisites:** Python 3.11+ and Node 18+
 
-3. Run (each in its own terminal, venv active):
-   - Activate backend venv `source .venv/bin/activate`
-   - `make backend`   → http://localhost:8000
-And
-   - `make frontend`  → http://localhost:3000
+```bash
+# 1. Copy env files
+cp backend/.env.example backend/.env
+cp frontend/.env.local.example frontend/.env.local
 
-To run tests, from root: `make test`
+# 2. Install dependencies (once)
+python -m venv .venv && source .venv/bin/activate
+pip install -r backend/requirements.txt
+npm install --prefix frontend
 
-## What do these commands do?
+# 3. Run (two terminals, venv active in both)
+make backend    # → http://localhost:8000
+make frontend   # → http://localhost:3000
 
-- `make backend` is the equivalent of running `uvicorn main:app --app-dir backend --reload` 
-- `make frontend` is the equivalent of running `npm --prefix frontend run dev`
-- `make test` is the equivalent of running `pytest` at root
+# Run tests
+make test
+```
 
-## Development Version
+## Development mode
 
-You can also run FactPage in development mode to view the different A/B test options and what the statistics page would look like with sample data. This is useful for development because FactPage stores cookies to ensure each user gets the same A/B test for 7 days.
-1. `make dev-backend`    `# terminal 1 — uvicorn with --reload`
-2. `make dev-frontend`   `# terminal 2 — next dev`
+Development mode enables a floating variant switcher panel (so you can preview all four combinations) and a "Reset survey" button on the stats page (useful since the cookie persists for 7 days).
 
-# Coming Next
+```bash
+make dev-backend    # terminal 1
+make dev-frontend   # terminal 2
+```
 
-- Real Facts
-- Deployment with Vercel and Render
-- Further analytics
+Dev mode is gated behind `NEXT_PUBLIC_DEV_TOOLS=true`, which only `make dev-frontend` sets. Running `make frontend` (the normal command) never shows dev tools, even on localhost.
+
+To preview stats locally without real users:
+
+```bash
+cd backend && python seed_demo_data.py
+```
+
+This seeds 600 synthetic sessions (above the ~234/variant threshold). The stats page will show full results. All synthetic sessions are filtered out of `/api/stats` automatically when real users arrive — they don't contaminate the live experiment.
+
+## Editing the content
+
+Facts live in [frontend/lib/facts.ts](frontend/lib/facts.ts). Each item has `id`, `title`, and `body`. Add, remove, or reorder freely — both list variants adapt automatically to array length.
+
+## What the make commands do
+
+| Command | Equivalent |
+|---|---|
+| `make backend` | `uvicorn main:app --app-dir backend --reload` |
+| `make frontend` | `npm --prefix frontend run dev` |
+| `make dev-backend` | same as backend (reload enabled) |
+| `make dev-frontend` | `NEXT_PUBLIC_DEV_TOOLS=true npm --prefix frontend run dev` |
+| `make test` | `pytest` (backend) + `npm test` (frontend Jest) |

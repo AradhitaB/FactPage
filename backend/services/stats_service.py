@@ -6,13 +6,15 @@ from statsmodels.stats.proportion import proportion_effectsize, proportions_ztes
 from statsmodels.stats.power import NormalIndPower
 from sqlalchemy.orm import Session as DBSession
 import config
-from models import Session, Event, Variant, EventType
-from schemas import VariantCounts, VariantDepth, TestResult, StatsResponse
+from models import Session, Event, Variant, EventType, Demographics
+from schemas import VariantCounts, TestResult, StatsResponse, DemographicGroup, DemographicsStats, DepthBucket, DepthHistogram
 
 ALPHA = config.ALPHA
 POWER = config.POWER
 MDE = config.MDE
 BASELINE = config.BASELINE_CONVERSION
+
+TOTAL_FACTS = 20  # Number of items in the fact list
 
 
 def _required_per_variant() -> int:
@@ -49,6 +51,7 @@ def _query_counts(
             Event,
             (Event.session_id == Session.id) & (Event.event_type == event_type),
         )
+        .filter(Session.is_synthetic.is_(False))
         .group_by(group_col)
         .all()
     )
@@ -61,42 +64,76 @@ def _query_counts(
     return result
 
 
-def _query_depth(db: DBSession) -> dict[Variant, VariantDepth]:
+def _query_depth_histograms(db: DBSession) -> dict[Variant, DepthHistogram]:
     """
-    Single GROUP BY query returning depth stats per list variant.
+    Distribution of facts read per variant, plus per-demographic slices.
 
-    LEFT OUTER JOIN on list_depth events only — sessions with no depth recording
-    still appear with n=0. func.count(Event.id) counts only non-NULL rows (i.e.
-    sessions that have a list_depth event); func.avg(Event.value) is NULL when n=0.
-    Coverage = n / assigned — the fraction of sessions with a recorded depth value.
+    list_depth events store a float 0.0–1.0. Multiplying by TOTAL_FACTS and
+    rounding gives the number of facts the session reached (0–20).
+
+    Demographic slices join Demographics → Sessions → Events so the distribution
+    is scoped to survey respondents only.
     """
-    rows = (
+    bucket_expr = func.round(Event.value * TOTAL_FACTS)
+
+    def _to_buckets(counts: dict[int, int]) -> list[DepthBucket]:
+        return [DepthBucket(facts=i, count=counts.get(i, 0)) for i in range(TOTAL_FACTS + 1)]
+
+    # Overall distribution per variant
+    overall_rows = (
         db.query(
             Session.list_variant,
-            func.count(Session.id).label("assigned"),
-            func.count(Event.id).label("n"),
-            func.avg(Event.value).label("mean_depth"),
+            bucket_expr.label("bucket"),
+            func.count(Event.id).label("cnt"),
         )
-        .outerjoin(
-            Event,
-            (Event.session_id == Session.id) & (Event.event_type == EventType.list_depth),
-        )
-        .group_by(Session.list_variant)
+        .join(Event, (Event.session_id == Session.id) & (Event.event_type == EventType.list_depth))
+        .filter(Event.value.isnot(None), Session.is_synthetic.is_(False))
+        .group_by(Session.list_variant, bucket_expr)
         .all()
     )
 
-    result = {
-        Variant.A: VariantDepth(n=0, mean=0.0, coverage=0.0),
-        Variant.B: VariantDepth(n=0, mean=0.0, coverage=0.0),
-    }
-    for variant, assigned, n, mean_depth in rows:
-        coverage = n / assigned if assigned > 0 else 0.0
-        result[variant] = VariantDepth(
-            n=n,
-            mean=round(float(mean_depth), 4) if mean_depth is not None else 0.0,
-            coverage=round(coverage, 4),
+    overall: dict[Variant, dict[int, int]] = {Variant.A: {}, Variant.B: {}}
+    for variant, bucket, cnt in overall_rows:
+        overall[variant][int(bucket)] = cnt
+
+    def _demo_dist(variant: Variant, demo_col) -> dict[str, list[DepthBucket]]:
+        rows = (
+            db.query(
+                demo_col,
+                bucket_expr.label("bucket"),
+                func.count(Event.id).label("cnt"),
+            )
+            .join(Session, Session.id == Demographics.session_id)
+            .join(
+                Event,
+                (Event.session_id == Demographics.session_id)
+                & (Event.event_type == EventType.list_depth),
+            )
+            .filter(
+                Session.list_variant == variant,
+                Event.value.isnot(None),
+                demo_col.isnot(None),
+                Session.is_synthetic.is_(False),
+            )
+            .group_by(demo_col, bucket_expr)
+            .all()
         )
-    return result
+        result: dict[str, dict[int, int]] = {}
+        for label, bucket, cnt in rows:
+            if label not in result:
+                result[label] = {}
+            result[label][int(bucket)] = cnt
+        return {label: _to_buckets(counts) for label, counts in result.items()}
+
+    return {
+        v: DepthHistogram(
+            overall=_to_buckets(overall[v]),
+            age_range=_demo_dist(v, Demographics.age_range),
+            technical_background=_demo_dist(v, Demographics.technical_background),
+            prior_knowledge=_demo_dist(v, Demographics.prior_knowledge),
+        )
+        for v in (Variant.A, Variant.B)
+    }
 
 
 def _run_test(a: VariantCounts, b: VariantCounts) -> TestResult:
@@ -145,10 +182,60 @@ def _run_test(a: VariantCounts, b: VariantCounts) -> TestResult:
     )
 
 
+def _query_demographics_stats(db: DBSession) -> DemographicsStats | None:
+    """
+    For each demographic field, compute completion rate per label.
+    Returns None if no demographics responses exist yet.
+    """
+    total = (
+        db.query(func.count(Demographics.id))
+        .join(Session, Session.id == Demographics.session_id)
+        .filter(Session.is_synthetic.is_(False))
+        .scalar()
+    ) or 0
+    if total == 0:
+        return None
+
+    def _groups_for(col) -> list[DemographicGroup]:
+        rows = (
+            db.query(
+                col,
+                func.count(Demographics.id).label("n"),
+                func.count(Event.id).label("completed"),
+            )
+            .join(Session, Session.id == Demographics.session_id)
+            .outerjoin(
+                Event,
+                (Event.session_id == Demographics.session_id)
+                & (Event.event_type == EventType.list_complete),
+            )
+            .filter(col.isnot(None), Session.is_synthetic.is_(False))
+            .group_by(col)
+            .all()
+        )
+        return [
+            DemographicGroup(label=label, n=n, completed=completed, rate=round(completed / n, 4) if n > 0 else 0.0)
+            for label, n, completed in rows
+        ]
+
+    return DemographicsStats(
+        total_responses=total,
+        age_range=_groups_for(Demographics.age_range),
+        technical_background=_groups_for(Demographics.technical_background),
+        prior_knowledge=_groups_for(Demographics.prior_knowledge),
+        device_type=_groups_for(Demographics.device_type),
+    )
+
+
+def _earliest_real_session(db: DBSession) -> str | None:
+    earliest = db.query(func.min(Session.created_at)).filter(Session.is_synthetic.is_(False)).scalar()
+    return earliest.isoformat() if earliest else None
+
+
 def get_stats(db: DBSession) -> StatsResponse:
     list_counts = _query_counts(db, Session.list_variant, EventType.list_complete)
     button_counts = _query_counts(db, Session.button_variant, EventType.button_click)
-    depth_counts = _query_depth(db)
+    histograms = _query_depth_histograms(db)
 
     list_a, list_b = list_counts[Variant.A], list_counts[Variant.B]
     button_a, button_b = button_counts[Variant.A], button_counts[Variant.B]
@@ -171,6 +258,8 @@ def get_stats(db: DBSession) -> StatsResponse:
         button_unlocked=button_unlocked,
         list_test=_run_test(list_a, list_b) if list_unlocked else None,
         button_test=_run_test(button_a, button_b) if button_unlocked else None,
-        list_depth_a=depth_counts[Variant.A],
-        list_depth_b=depth_counts[Variant.B],
+        depth_histogram_a=histograms[Variant.A],
+        depth_histogram_b=histograms[Variant.B],
+        demographics=_query_demographics_stats(db),
+        earliest_real_session_at=_earliest_real_session(db),
     )

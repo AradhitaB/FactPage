@@ -20,7 +20,7 @@ export default function Home() {
     []
   )
 
-  const isDev = process.env.NODE_ENV === 'development'
+  const isDev = process.env.NEXT_PUBLIC_DEV_TOOLS === 'true'
 
   // Dev-only variant overrides — do not affect stored assignment or event recording
   const [devList, setDevList] = useState<'A' | 'B' | null>(null)
@@ -48,6 +48,7 @@ export default function Home() {
     api.recordEvent(assignment.session_id, 'list_complete').catch((err) => console.error('Failed to record event:', err))
     if (!listDepthFiredRef.current) {
       listDepthFiredRef.current = true
+      localStorage.setItem('factpage_depth', String(listDepthRef.current))
       api.recordEvent(assignment.session_id, 'list_depth', listDepthRef.current).catch((err) => console.error('Failed to record event:', err))
     }
   }
@@ -57,6 +58,7 @@ export default function Home() {
     if (!assignment) return
     if (!listDepthFiredRef.current) {
       listDepthFiredRef.current = true
+      localStorage.setItem('factpage_depth', String(listDepthRef.current))
       api.recordEvent(assignment.session_id, 'list_depth', listDepthRef.current).catch((err) => console.error('Failed to record event:', err))
     }
     api.recordEvent(assignment.session_id, 'button_click').catch((err) => console.error('Failed to record event:', err))

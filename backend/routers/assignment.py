@@ -34,13 +34,14 @@ def get_or_create_assignment(
 
     # No valid session — create one
     session = create_session(db)
+    is_prod = config.ENVIRONMENT == "production"
     response.set_cookie(
         key=SESSION_COOKIE,
         value=session.id,
         max_age=COOKIE_MAX_AGE,
         httponly=True,
-        samesite="lax",
-        secure=config.ENVIRONMENT == "production",
+        samesite="none" if is_prod else "lax",  # cross-origin fetch requires SameSite=None
+        secure=is_prod,  # Secure is required when SameSite=None
     )
     return AssignmentResponse(
         session_id=session.id,

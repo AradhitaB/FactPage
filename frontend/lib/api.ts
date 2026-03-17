@@ -1,4 +1,4 @@
-import type { Assignment, EventType, Stats } from '@/types'
+import type { Assignment, EventType, Stats, DemographicsSubmit, DemographicsResponse } from '@/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 
@@ -37,10 +37,15 @@ export const api = {
   getStats: (): Promise<Stats> =>
     apiFetch('/api/stats'),
 
-  // Dev-only — only call these when process.env.NODE_ENV === 'development'
-  devSeed: (): Promise<{ ok: boolean }> =>
-    apiFetch('/api/dev/seed', { method: 'POST' }),
+  getDemographics: (): Promise<DemographicsResponse> =>
+    apiFetch('/api/demographics'),
 
-  devClear: (): Promise<{ ok: boolean }> =>
-    apiFetch('/api/dev/clear', { method: 'POST' }),
+  submitDemographics: (body: DemographicsSubmit): Promise<DemographicsResponse> =>
+    apiFetch('/api/demographics', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  devResetSurvey: (): Promise<{ ok: boolean }> =>
+    apiFetch('/api/dev/reset-survey', { method: 'POST' }),
 }

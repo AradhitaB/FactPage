@@ -11,12 +11,6 @@ export interface Assignment {
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
 
-export interface VariantDepth {
-  n: number        // sessions with a recorded depth value
-  mean: number     // average depth among those sessions (0.0–1.0)
-  coverage: number // n / total_assigned
-}
-
 export interface VariantCounts {
   assigned: number
   converted: number
@@ -33,6 +27,33 @@ export interface TestResult {
   significant: boolean
 }
 
+export interface DepthBucket {
+  facts: number  // 0–20
+  count: number  // sessions that reached exactly this many facts
+}
+
+export interface DepthHistogram {
+  overall: DepthBucket[]
+  age_range: Record<string, DepthBucket[]>
+  technical_background: Record<string, DepthBucket[]>
+  prior_knowledge: Record<string, DepthBucket[]>
+}
+
+export interface DemographicGroup {
+  label: string
+  n: number
+  completed: number
+  rate: number
+}
+
+export interface DemographicsStats {
+  total_responses: number
+  age_range: DemographicGroup[]
+  technical_background: DemographicGroup[]
+  prior_knowledge: DemographicGroup[]
+  device_type: DemographicGroup[]
+}
+
 export interface Stats {
   required_per_variant: number
   list_a: VariantCounts
@@ -45,6 +66,25 @@ export interface Stats {
   button_unlocked: boolean
   list_test?: TestResult     // present only when list_unlocked
   button_test?: TestResult   // present only when button_unlocked
-  list_depth_a: VariantDepth
-  list_depth_b: VariantDepth
+  depth_histogram_a: DepthHistogram
+  depth_histogram_b: DepthHistogram
+  demographics?: DemographicsStats
+  earliest_real_session_at?: string  // ISO timestamp of first non-synthetic session
+}
+
+// ─── Demographics ──────────────────────────────────────────────────────────────
+
+export interface DemographicsSubmit {
+  age_range: string | null
+  technical_background: string | null
+  prior_knowledge: string | null
+  device_type: string | null
+}
+
+export interface DemographicsResponse {
+  submitted: boolean
+  age_range: string | null
+  technical_background: string | null
+  prior_knowledge: string | null
+  device_type: string | null
 }

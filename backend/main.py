@@ -10,10 +10,9 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
+from sqlalchemy import text
 from database import engine, Base, SessionLocal
-from routers import assignment, events, stats
-if config.ENVIRONMENT == "development":
-    from routers import dev
+from routers import assignment, demographics, events, stats
 from services.ab_service import cleanup_old_sessions
 
 logging.basicConfig(
@@ -47,6 +46,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    # Schema migration: add is_synthetic column if it doesn't exist yet (existing DBs)
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE sessions ADD COLUMN is_synthetic BOOLEAN NOT NULL DEFAULT 0"))
+            conn.commit()
+            logger.info("Schema migration: added is_synthetic column to sessions")
+        except Exception:
+            pass  # column already exists
+
     db = SessionLocal()
     try:
         deleted = cleanup_old_sessions(db)
@@ -82,9 +90,12 @@ app.add_middleware(
 )
 
 app.include_router(assignment.router)
+app.include_router(demographics.router)
 app.include_router(events.router)
 app.include_router(stats.router)
+
 if config.ENVIRONMENT == "development":
+    from routers import dev  # noqa: PLC0415
     app.include_router(dev.router)
 
 
