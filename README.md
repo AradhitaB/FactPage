@@ -35,7 +35,7 @@ Stats that haven't reached threshold yet show real data at reduced opacity. Togg
 | Database | SQLite via SQLAlchemy ORM |
 | Statistics | `statsmodels` (z-test, power analysis), `scipy`, `numpy` |
 | Rate limiting | `slowapi` |
-| Hosting | Vercel (frontend) + Render (backend) |
+| Hosting | Cloudflare Pages (frontend) + PythonAnywhere (backend) |
 
 ### Key backend endpoints
 
@@ -98,6 +98,58 @@ This seeds 600 synthetic sessions (above the ~234/variant threshold). The stats 
 ## Editing the content
 
 Facts live in [frontend/lib/facts.ts](frontend/lib/facts.ts). Each item has `id`, `title`, and `body`. Add, remove, or reorder freely — both list variants adapt automatically to array length.
+
+# Deploying
+
+Both platforms are free and require no credit card.
+
+## Backend — PythonAnywhere
+
+1. Sign up at [pythonanywhere.com](https://www.pythonanywhere.com) (free account)
+2. Open a **Bash console** and clone your repo:
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+   cd YOUR_REPO/backend
+   pip install -r requirements.txt
+   ```
+3. Go to **Web** → **Add a new web app** → Manual configuration → Python 3.11
+4. In the WSGI configuration file (linked from the Web tab), replace the contents with:
+   ```python
+   import sys
+   sys.path.insert(0, '/home/YOUR_USERNAME/YOUR_REPO/backend')
+   from wsgi import application
+   ```
+5. Set environment variables under **Web → Environment variables**:
+   ```
+   ENVIRONMENT=production
+   FRONTEND_URL=https://YOUR_PROJECT.pages.dev   ← fill in after step below
+   DB_PATH=/home/YOUR_USERNAME/factpage.db
+   ALPHA=0.025
+   POWER=0.80
+   MDE=0.10
+   BASELINE_CONVERSION=0.50
+   ```
+6. Click **Reload**. Your backend is live at `https://YOUR_USERNAME.pythonanywhere.com`.
+
+**To download your data:** PythonAnywhere dashboard → Files → navigate to `/home/YOUR_USERNAME/` → download `factpage.db`. Open it with [DB Browser for SQLite](https://sqlitebrowser.org/).
+
+## Frontend — Cloudflare Pages
+
+1. Sign up at [cloudflare.com](https://www.cloudflare.com) (free account)
+2. Go to **Pages** → **Create a project** → connect your GitHub repo
+3. Build settings:
+   - **Root directory:** `frontend`
+   - **Build command:** `npm run build`
+   - **Output directory:** `out`
+4. Add environment variable:
+   ```
+   NEXT_PUBLIC_API_URL=https://YOUR_USERNAME.pythonanywhere.com
+   ```
+5. Deploy. Your frontend is live at `https://YOUR_PROJECT.pages.dev`.
+
+**One final step** — update `frontend/public/_headers`: replace `REPLACE_WITH_YOUR_PYTHONANYWHERE_URL` with your actual PythonAnywhere URL, commit and push. Cloudflare will auto-redeploy.
+
+Also go back to PythonAnywhere and update `FRONTEND_URL` to your Cloudflare Pages URL, then reload.
 
 ## What the make commands do
 
