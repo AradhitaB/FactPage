@@ -55,7 +55,7 @@ export default function ScrollableList({ items, onComplete, onDepthChange }: Scr
               </div>
 
               {/* Content */}
-              <div className="flex flex-col px-6 py-4">
+              <div className="flex flex-col flex-1 overflow-y-auto px-6 py-4">
                 <h2 className="mb-3 text-base font-semibold text-text">{item.title}</h2>
                 <p className="text-sm leading-relaxed text-text-muted">{item.body}</p>
               </div>
