@@ -128,7 +128,9 @@ Both platforms are free and require no credit card.
    POWER=0.80
    MDE=0.10
    BASELINE_CONVERSION=0.50
+   TRUST_PROXY_HEADERS=true
    ```
+   `TRUST_PROXY_HEADERS=true` enables per-user rate limiting. Without it, all visitors share the same gateway IP and rate limits apply to the server as a whole rather than per user.
 6. Click **Reload**. Your backend is live at `https://YOUR_USERNAME.pythonanywhere.com`.
 
 **To download your data:** PythonAnywhere dashboard → Files → navigate to `/home/YOUR_USERNAME/` → download `factpage.db`. Open it with [DB Browser for SQLite](https://sqlitebrowser.org/).
@@ -147,9 +149,11 @@ Both platforms are free and require no credit card.
    ```
 5. Deploy. Your frontend is live at `https://YOUR_PROJECT.pages.dev`.
 
-**One final step** — update `frontend/public/_headers`: replace `REPLACE_WITH_YOUR_PYTHONANYWHERE_URL` with your actual PythonAnywhere URL, commit and push. Cloudflare will auto-redeploy.
+**Two final steps:**
 
-Also go back to PythonAnywhere and update `FRONTEND_URL` to your Cloudflare Pages URL, then reload.
+1. Update `frontend/public/_headers` — replace the hardcoded `connect-src` URL with your own PythonAnywhere URL (e.g. `https://YOUR_USERNAME.pythonanywhere.com`), commit and push. Cloudflare will auto-redeploy. Note: Cloudflare Pages cannot inject environment variables into this file, so the URL must be set manually here.
+
+2. Go back to PythonAnywhere and set `FRONTEND_URL` to your Cloudflare Pages URL, then reload.
 
 ## What the make commands do
 
