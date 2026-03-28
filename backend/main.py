@@ -6,10 +6,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-
+from limiter import limiter
 from sqlalchemy import text
 from database import engine, Base, SessionLocal
 from routers import assignment, demographics, events, stats
@@ -43,6 +42,39 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+_ALLOWED_ORIGINS: frozenset[str] | None = None
+
+
+def _get_allowed_origins() -> frozenset[str]:
+    """Build once after config is loaded."""
+    global _ALLOWED_ORIGINS
+    if _ALLOWED_ORIGINS is None:
+        _ALLOWED_ORIGINS = frozenset({config.FRONTEND_URL, *config.EXTRA_ORIGINS})
+    return _ALLOWED_ORIGINS
+
+
+class CSRFProtectionMiddleware(BaseHTTPMiddleware):
+    """Reject state-mutating requests whose Origin is set but not in the allow-list.
+
+    Browsers always send Origin on cross-origin requests, so this blocks CSRF
+    from third-party pages while leaving same-origin and server-side calls
+    (which omit Origin) unaffected.
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        if request.method not in _SAFE_METHODS:
+            origin = request.headers.get("origin")
+            if origin is not None and origin not in _get_allowed_origins():
+                logger.warning("CSRF block: origin=%r method=%s path=%s", origin, request.method, request.url.path)
+                return Response(
+                    content='{"detail":"Forbidden"}',
+                    status_code=403,
+                    media_type="application/json",
+                )
+        return await call_next(request)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
@@ -67,8 +99,6 @@ async def lifespan(app: FastAPI):
     logger.info("FactPage API shutting down")
 
 
-limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
-
 app = FastAPI(
     title="FactPage A/B API",
     docs_url="/docs" if config.ENVIRONMENT == "development" else None,
@@ -81,6 +111,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(CSRFProtectionMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[config.FRONTEND_URL, *config.EXTRA_ORIGINS],
