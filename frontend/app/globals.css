@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
-   Dark-first. No light mode — the aesthetic is intentional.
+   Dark by default; light mode follows prefers-color-scheme.
    All colors reference these variables so a palette swap is one-line.
    ─────────────────────────────────────────────────────────────────────────── */
 :root {
@@ -15,6 +15,21 @@
   --accent-dim:   #164e63;   /* cyan-900  — accent background tint            */
   --success:      #22c55e;   /* green-500 — significant result                */
   --warning:      #f59e0b;   /* amber-500 — approaching significance          */
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:           #fafafa;   /* zinc-50   — page background                  */
+    --surface:      #f4f4f5;   /* zinc-100  — card / panel background           */
+    --surface-2:    #e4e4e7;   /* zinc-200  — elevated surface (hover, border)  */
+    --border:       #d4d4d8;   /* zinc-300  — subtle borders                    */
+    --text:         #09090b;   /* zinc-950  — primary text                      */
+    --text-muted:   #71717a;   /* zinc-500  — secondary / caption text          */
+    --accent:       #0891b2;   /* cyan-600  — slightly darker for contrast      */
+    --accent-dim:   #cffafe;   /* cyan-100  — accent background tint            */
+    --success:      #16a34a;   /* green-600 — significant result                */
+    --warning:      #d97706;   /* amber-600 — approaching significance          */
+  }
 }
 
 @theme inline {
@@ -38,7 +53,7 @@
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: dark light;
 }
 
 body {
