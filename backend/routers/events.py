@@ -1,15 +1,13 @@
 import config
 from fastapi import APIRouter, Depends, HTTPException, Request
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session as DBSession
 from database import get_db
 from models import Event, EventType
 from services.ab_service import get_session
 from schemas import EventRequest, EventResponse
+from limiter import limiter
 
 router = APIRouter(prefix="/api", tags=["events"])
-limiter = Limiter(key_func=get_remote_address)
 
 SESSION_COOKIE = config.SESSION_COOKIE
 
