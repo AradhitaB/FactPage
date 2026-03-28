@@ -750,9 +750,17 @@ export default function StatsPage() {
   if (error) {
     return (
       <main className="flex min-h-screen items-center justify-center px-4">
-        <p className="text-center text-sm text-red-400">
-          Could not load results. Make sure the backend is running.
-        </p>
+        <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+          <p className="text-sm text-text-muted">
+            Results couldn&apos;t load — this usually happens when you navigate away and come back, since the session expires.
+          </p>
+          <button
+            onClick={() => { setError(null); fetchStats() }}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-accent ring-1 ring-accent/40 transition-colors hover:bg-accent/10"
+          >
+            Refresh
+          </button>
+        </div>
       </main>
     )
   }
