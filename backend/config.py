@@ -36,5 +36,12 @@ EXTRA_ORIGINS: list[str] = [
     o.strip() for o in os.getenv("EXTRA_ORIGINS", "").split(",") if o.strip()
 ]
 
+# When True, rate limiter reads the real client IP from X-Forwarded-For.
+# Set to true on PythonAnywhere (and any other reverse-proxy host) where
+# request.client.host is always the gateway IP, making per-IP rate limits
+# shared across all users. Only enable this when you trust the proxy to
+# set X-Forwarded-For accurately (PythonAnywhere does).
+TRUST_PROXY_HEADERS: bool = os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
+
 # Shared cookie name — single source of truth for all routers
 SESSION_COOKIE: str = "factpage_session"

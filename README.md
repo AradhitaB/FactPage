@@ -133,8 +133,8 @@ Both platforms are free and require no credit card.
    MDE=0.10
    BASELINE_CONVERSION=0.50
    TRUST_PROXY_HEADERS=true
+   TRUST_PROXY_HEADERS=true
    ```
-   Save with `Ctrl+O` → `Enter` → `Ctrl+X`. The `.env` file is gitignored and won't be overwritten on future `git pull`s.
 6. Click **Reload** on the Web tab. Your backend is live at `https://YOUR_USERNAME.pythonanywhere.com`.
 
 **To download your data:** PythonAnywhere dashboard → Files → navigate to `/home/YOUR_USERNAME/` → download `factpage.db`. Open it with [DB Browser for SQLite](https://sqlitebrowser.org/).
@@ -153,6 +153,9 @@ Both platforms are free and require no credit card.
    ```
 5. Deploy. Your frontend is live at `https://YOUR_PROJECT.pages.dev`.
 
+**Two final steps:**
+
+1. Update `frontend/public/_headers` — replace the hardcoded `connect-src` URL with your own PythonAnywhere URL (e.g. `https://YOUR_USERNAME.pythonanywhere.com`), commit and push. Cloudflare will auto-redeploy. Note: Cloudflare Pages cannot inject environment variables into this file, so the URL must be set manually here.
 **Two final steps:**
 
 1. Update `frontend/public/_headers` — replace the hardcoded `connect-src` URL with your own PythonAnywhere URL (e.g. `https://YOUR_USERNAME.pythonanywhere.com`), commit and push. Cloudflare will auto-redeploy. Note: Cloudflare Pages cannot inject environment variables into this file, so the URL must be set manually here.

@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 from pydantic import BaseModel
 from models import Variant, EventType
@@ -101,16 +102,22 @@ class StatsResponse(BaseModel):
 
 # ─── Demographics ──────────────────────────────────────────────────────────────
 
+AgeRange = Literal["under_18", "18_24", "25_34", "35_44", "45_plus"]
+TechnicalBackground = Literal["non_technical", "somewhat_technical", "technical"]
+PriorKnowledge = Literal["none", "a_few", "about_half", "most", "all"]
+DeviceType = Literal["desktop", "mobile"]
+
+
 class DemographicsRequest(BaseModel):
-    age_range: str | None = None
-    technical_background: str | None = None
-    prior_knowledge: str | None = None
-    device_type: str | None = None
+    age_range: AgeRange | None = None
+    technical_background: TechnicalBackground | None = None
+    prior_knowledge: PriorKnowledge | None = None
+    device_type: DeviceType | None = None
 
 
 class DemographicsResponse(BaseModel):
     submitted: bool
-    age_range: str | None = None
-    technical_background: str | None = None
-    prior_knowledge: str | None = None
-    device_type: str | None = None
+    age_range: AgeRange | None = None
+    technical_background: TechnicalBackground | None = None
+    prior_knowledge: PriorKnowledge | None = None
+    device_type: DeviceType | None = None
