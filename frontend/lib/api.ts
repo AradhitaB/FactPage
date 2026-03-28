@@ -5,11 +5,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 10_000)
+  const sessionId = typeof window !== 'undefined' ? localStorage.getItem('factpage_session_id') : null
   let res: Response
   try {
     res = await fetch(`${API_URL}${path}`, {
       credentials: 'include', // required — backend sets session cookie cross-origin
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(sessionId ? { 'X-Session-Id': sessionId } : {}),
+      },
       signal: controller.signal,
       ...init,
     })

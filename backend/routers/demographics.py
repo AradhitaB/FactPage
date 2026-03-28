@@ -17,7 +17,7 @@ SESSION_COOKIE = config.SESSION_COOKIE
 @router.get("/demographics", response_model=DemographicsResponse)
 @limiter.limit("30/minute")
 def get_demographics(request: Request, db: DBSession = Depends(get_db)):
-    session_id = request.cookies.get(SESSION_COOKIE)
+    session_id = request.cookies.get(SESSION_COOKIE) or request.headers.get("X-Session-Id")
     if not session_id:
         raise HTTPException(status_code=403, detail="No session")
 
@@ -44,7 +44,7 @@ def submit_demographics(
     request: Request,
     db: DBSession = Depends(get_db),
 ):
-    session_id = request.cookies.get(SESSION_COOKIE)
+    session_id = request.cookies.get(SESSION_COOKIE) or request.headers.get("X-Session-Id")
     if not session_id:
         raise HTTPException(status_code=403, detail="No session")
 
