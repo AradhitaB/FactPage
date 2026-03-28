@@ -119,17 +119,23 @@ Both platforms are free and require no credit card.
    sys.path.insert(0, '/home/YOUR_USERNAME/YOUR_REPO/backend')
    from wsgi import application
    ```
-5. Set environment variables under **Web → Environment variables**:
+5. Create a `.env` file in the Bash console (PythonAnywhere free tier has no Web UI for env vars):
+   ```bash
+   nano ~/YOUR_REPO/backend/.env
+   ```
+   Paste in your values:
    ```
    ENVIRONMENT=production
-   FRONTEND_URL=https://YOUR_PROJECT.pages.dev   ← fill in after step below
+   FRONTEND_URL=https://YOUR_PROJECT.pages.dev   ← fill in after Cloudflare step below
    DB_PATH=/home/YOUR_USERNAME/factpage.db
    ALPHA=0.025
    POWER=0.80
    MDE=0.10
    BASELINE_CONVERSION=0.50
+   TRUST_PROXY_HEADERS=true
    ```
-6. Click **Reload**. Your backend is live at `https://YOUR_USERNAME.pythonanywhere.com`.
+   Save with `Ctrl+O` → `Enter` → `Ctrl+X`. The `.env` file is gitignored and won't be overwritten on future `git pull`s.
+6. Click **Reload** on the Web tab. Your backend is live at `https://YOUR_USERNAME.pythonanywhere.com`.
 
 **To download your data:** PythonAnywhere dashboard → Files → navigate to `/home/YOUR_USERNAME/` → download `factpage.db`. Open it with [DB Browser for SQLite](https://sqlitebrowser.org/).
 
@@ -147,9 +153,11 @@ Both platforms are free and require no credit card.
    ```
 5. Deploy. Your frontend is live at `https://YOUR_PROJECT.pages.dev`.
 
-**One final step** — update `frontend/public/_headers`: replace `REPLACE_WITH_YOUR_PYTHONANYWHERE_URL` with your actual PythonAnywhere URL, commit and push. Cloudflare will auto-redeploy.
+**Two final steps:**
 
-Also go back to PythonAnywhere and update `FRONTEND_URL` to your Cloudflare Pages URL, then reload.
+1. Update `frontend/public/_headers` — replace the hardcoded `connect-src` URL with your own PythonAnywhere URL (e.g. `https://YOUR_USERNAME.pythonanywhere.com`), commit and push. Cloudflare will auto-redeploy. Note: Cloudflare Pages cannot inject environment variables into this file, so the URL must be set manually here.
+
+2. Go back to PythonAnywhere, open your `.env`, set `FRONTEND_URL` to your Cloudflare Pages URL, and click **Reload** on the Web tab.
 
 ## What the make commands do
 
