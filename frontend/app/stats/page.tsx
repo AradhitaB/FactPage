@@ -752,7 +752,8 @@ export default function StatsPage() {
       <main className="flex min-h-screen items-center justify-center px-4">
         <div className="flex flex-col items-center gap-4 text-center max-w-sm">
           <p className="text-sm text-text-muted">
-            Results couldn&apos;t load — this usually happens when you navigate away and come back, since the session expires.
+            Results couldn&apos;t load — this usually happens when you navigate away and come back after a while, since the session expires.
+            A part of the A/B test records the 'depth' of 'scroll' into the list. You refresh to try again.
           </p>
           <button
             onClick={() => { setError(null); fetchStats() }}

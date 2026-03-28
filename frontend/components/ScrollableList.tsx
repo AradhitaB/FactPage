@@ -27,36 +27,50 @@ export default function ScrollableList({ items, onComplete, onDepthChange }: Scr
         />
       </div>
 
-      {/* Scroll area with bottom fade */}
-      <div className="relative">
-        <div
-          ref={containerRef}
-          className="h-[320px] overflow-y-auto sm:h-[400px]"
-        >
-          {items.map((item, i) => {
-            const isLast = i === items.length - 1
-            return (
-              <div
-                key={item.id}
-                className={`px-6 py-5${!isLast ? ' border-b border-border' : ''}`}
-              >
-                <div className="flex items-baseline gap-3 mb-2">
-                  <span className="font-mono text-xs text-accent shrink-0">
-                    {String(i + 1).padStart(2, '0')} / {items.length}
-                  </span>
-                  <h2 className="text-base font-semibold text-text">{item.title}</h2>
+      {/* Snap-scroll container */}
+      <div
+        ref={containerRef}
+        className="h-[280px] overflow-y-scroll snap-y snap-mandatory sm:h-[320px]"
+      >
+        {items.map((item, i) => {
+          const isLast = i === items.length - 1
+          const isFirst = i === 0
+          return (
+            <div
+              key={item.id}
+              className="relative shrink-0 snap-start snap-always flex flex-col h-[280px] sm:h-[320px]"
+            >
+              {/* Up scroll hint */}
+              {!isFirst && (
+                <div className="absolute top-3 left-0 right-0 flex justify-center pointer-events-none">
+                  <span className="font-mono text-[10px] text-text-muted/40">↑ scroll</span>
                 </div>
+              )}
+
+              {/* Counter */}
+              <div className="flex items-center px-6 pt-5 pb-0">
+                <span className="font-mono text-xs text-accent">
+                  {String(i + 1).padStart(2, '0')} / {items.length}
+                </span>
+              </div>
+
+              {/* Content */}
+              <div className="flex flex-col flex-1 overflow-y-auto px-6 py-4">
+                <h2 className="mb-3 text-base font-semibold text-text">{item.title}</h2>
                 <p className="text-sm leading-relaxed text-text-muted">{item.body}</p>
               </div>
-            )
-          })}
-        </div>
 
-        {/* Fade signals more content below; disappears when complete */}
-        <div
-          className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-surface to-transparent transition-opacity duration-300"
-          style={{ opacity: progress >= 99 ? 0 : 1 }}
-        />
+              {/* Down scroll hint */}
+              <div className="mt-auto border-t border-border px-6 py-4 flex justify-center pointer-events-none">
+                {!isLast ? (
+                  <span className="animate-bounce font-mono text-[10px] text-text-muted/60">↓ scroll</span>
+                ) : (
+                  <span className="font-mono text-[10px] text-text-muted/30">end of list</span>
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
