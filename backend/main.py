@@ -86,7 +86,7 @@ app.add_middleware(
     allow_origins=[config.FRONTEND_URL, *config.EXTRA_ORIGINS],
     allow_credentials=True,  # required for cookies
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-Session-Id"],
 )
 
 app.include_router(assignment.router)

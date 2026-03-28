@@ -17,7 +17,10 @@ export function useAssignment(): UseAssignmentResult {
 
   useEffect(() => {
     api.getAssignment()
-      .then(setAssignment)
+      .then((a) => {
+        localStorage.setItem('factpage_session_id', a.session_id)
+        setAssignment(a)
+      })
       .catch((err: unknown) => setError(err instanceof Error ? err : new Error(String(err))))
       .finally(() => setIsLoading(false))
   }, []) // runs once on mount — backend returns existing session if cookie is present
