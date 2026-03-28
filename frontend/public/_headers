@@ -1,3 +1,7 @@
+# Cloudflare Pages edge headers — applied to every response served from this deployment.
+# NOTE: Cloudflare Pages does not support environment variable injection into this file.
+# connect-src must be updated manually if the backend URL changes, followed by a Cloudflare
+# Pages redeploy. This file is not used during local Next.js development (next dev ignores it).
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
