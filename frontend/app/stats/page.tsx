@@ -790,6 +790,13 @@ export default function StatsPage() {
           </button>
           <h1 className="text-2xl font-semibold tracking-tight text-text">Live Results</h1>
           <p className="text-sm text-text-muted">
+            FactPage renders the list and buttons in one of two variants chosen at random to perform an A/B test.
+          </p>
+          <p className="text-sm text-text-muted">
+            You can learn more about the A/B test, the variants, and how it all comes together on{' '}
+            <a href="https://github.com/AradhitaB/FactPage" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">FactPage&apos;s GitHub</a>.
+          </p>
+          <p className="text-sm text-text-muted">
             You were in{' '}
             {assignment ? (
               <>
