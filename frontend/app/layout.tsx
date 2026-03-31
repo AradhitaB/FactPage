@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'FactPage — Live A/B Experiment',
   description:
-    'Read through a list of facts, then see real-time data from everyone who visited.',
+    'Read through a list of random facts, then see real-time data from everyone who visited.',
 }
 
 function Footer() {
