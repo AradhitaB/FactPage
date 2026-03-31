@@ -93,7 +93,7 @@ export default function Home() {
             FactPage
           </h1>
           <p className="text-sm text-text-muted">
-            Read through the list, then hit the button below.
+            Read through a list of random facts, then see real-time data from everyone who visited.
           </p>
         </header>
 

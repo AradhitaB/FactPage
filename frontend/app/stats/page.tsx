@@ -414,11 +414,11 @@ function LimitationsSection({ eitherUnlocked }: { eitherUnlocked: boolean }) {
   const items = [
     {
       label: 'Scroll depth ≠ reading',
-      detail: 'Completion is measured by scroll position reaching 80% of the container. We cannot verify whether text was actually read — a fast scroll counts the same as careful reading.',
+      detail: 'Completion is measured by scroll position reaching 80% of the container. We cannot verify whether text was actually read. A fast scroll counts the same as careful reading.',
     },
     {
       label: 'Self-selected sample',
-      detail: 'Participants are people who found this page — not a random population sample. Results describe this audience, not people in general.',
+      detail: 'Participants are people who found this page, not a random population sample, and results describe this specific audience.',
     },
     {
       label: 'Novelty effects',
@@ -426,11 +426,11 @@ function LimitationsSection({ eitherUnlocked }: { eitherUnlocked: boolean }) {
     },
     {
       label: 'Multiple comparisons',
-      detail: 'Running two tests simultaneously raises the family-wise false-positive rate. Bonferroni correction (α = 0.025 per test) controls this to ~5%, at the cost of slightly reduced power — real effects are marginally harder to detect.',
+      detail: 'Running two tests simultaneously raises the family-wise false-positive rate. Bonferroni correction (α = 0.025 per test) controls this to ~5%, at the cost of slightly reduced power, therefore real effects are marginally harder to detect.',
     },
     {
       label: 'Peeking problem',
-      detail: 'The power analysis assumes results are read exactly once — at the pre-registered sample size. Checking significance before the threshold and stopping early inflates the false-positive rate beyond 5%.',
+      detail: 'The power analysis assumes results are read exactly once, at the pre-registered sample size. Checking significance before the threshold and stopping early inflates the false-positive rate beyond 5%.',
     },
     {
       label: 'Demographics survey bias',
@@ -625,7 +625,7 @@ function DemographicsCard({
           <h2 className="text-sm font-semibold text-text">Quick survey</h2>
           <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-muted">optional</span>
         </div>
-        <p className="text-xs text-text-muted mt-0.5">Takes 20 seconds. Helps contextualise the results — you can skip if you prefer.</p>
+        <p className="text-xs text-text-muted mt-0.5">Takes 20 seconds. Helps contextualise the results, but you can skip if you prefer.</p>
       </div>
 
       {/* Age range */}
