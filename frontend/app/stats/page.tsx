@@ -101,10 +101,10 @@ function DemoToggle({ showDemo, onToggle }: { showDemo: boolean; onToggle: () =>
 // ─── Experiment sections ───────────────────────────────────────────────────────
 
 function ExperimentRawSection({
-  name, hypothesis, a, b, currentMin, required, demoA, demoB, demoTest,
+  name, hypothesis, a, b, currentMin, required, demoA, demoB, demoTest, conversionLabel = 'viewed results / visitors',
 }: {
   name: string; hypothesis: string; a: VariantCounts; b: VariantCounts; currentMin: number; required: number
-  demoA: VariantCounts; demoB: VariantCounts; demoTest: TestResult
+  demoA: VariantCounts; demoB: VariantCounts; demoTest: TestResult; conversionLabel?: string
 }) {
   const [showDemo, setShowDemo] = useState(false)
   const toggle = <DemoToggle showDemo={showDemo} onToggle={() => setShowDemo(d => !d)} />
@@ -122,15 +122,21 @@ function ExperimentRawSection({
         </div>
         <div className="flex items-center gap-3">
           {toggle}
-          <span className="font-mono text-xs text-text-muted">{currentMin} / {required} per variant</span>
+          <span className="font-mono text-xs text-text-muted">{currentMin} of {required} visitors per variant (for 80% power)</span>
         </div>
       </div>
+      <p className="text-xs text-text-muted leading-relaxed">
+        This experiment is still collecting data. The progress bar below shows how close each variant is to the sample size needed for a reliable result — the numbers above the bars are preliminary and should not be interpreted as a conclusion yet.
+      </p>
       <ProgressBar value={currentMin} max={required} />
       <div className="opacity-50">
         <ConversionBars a={a} b={b} />
-        <div className="flex gap-6 text-xs text-text-muted mt-2">
-          <span>A: {a.converted}/{a.assigned} ({(a.rate * 100).toFixed(1)}%)</span>
-          <span>B: {b.converted}/{b.assigned} ({(b.rate * 100).toFixed(1)}%)</span>
+        <div className="flex flex-col gap-1 mt-2">
+          <p className="text-xs text-text-muted/60">{conversionLabel}</p>
+          <div className="flex gap-6 text-xs text-text-muted">
+            <span>Variant A: {a.converted}/{a.assigned} ({(a.rate * 100).toFixed(1)}%)</span>
+            <span>Variant B: {b.converted}/{b.assigned} ({(b.rate * 100).toFixed(1)}%)</span>
+          </div>
         </div>
       </div>
     </section>
@@ -138,13 +144,19 @@ function ExperimentRawSection({
 }
 
 function ExperimentFullSection({
-  name, hypothesis, a, b, test, headerSlot,
+  name, hypothesis, a, b, test, headerSlot, conversionLabel = 'viewed results / visitors',
 }: {
-  name: string; hypothesis?: string; a: VariantCounts; b: VariantCounts; test: TestResult; headerSlot?: React.ReactNode
+  name: string; hypothesis?: string; a: VariantCounts; b: VariantCounts; test: TestResult; headerSlot?: React.ReactNode; conversionLabel?: string
 }) {
   const diff = b.rate - a.rate
   const { significant } = test
   const hDirection = test.effect_size > 0 ? 'B > A' : test.effect_size < 0 ? 'A > B' : 'no diff'
+
+  const winner = test.effect_size > 0 ? 'Variant B' : 'Variant A'
+  const loser  = test.effect_size > 0 ? 'Variant A' : 'Variant B'
+  const laymanSummary = significant
+    ? `This experiment has reached its target sample size and found a statistically significant result: ${winner} outperformed ${loser}. The confidence interval does not include zero, meaning the observed difference is unlikely to be due to chance.`
+    : `This experiment has reached its target sample size, but found no meaningful difference between the two variants. The data does not provide sufficient evidence to conclude that one format performs better than the other.`
 
   return (
     <section className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-5">
@@ -164,6 +176,8 @@ function ExperimentFullSection({
           </span>
         </div>
       </div>
+
+      <p className="text-xs text-text-muted leading-relaxed">{laymanSummary}</p>
 
       <ConversionBars a={a} b={b} />
 
@@ -193,9 +207,12 @@ function ExperimentFullSection({
         ))}
       </dl>
 
-      <div className="flex gap-6 text-xs text-text-muted">
-        <span>A: {a.converted}/{a.assigned}</span>
-        <span>B: {b.converted}/{b.assigned}</span>
+      <div className="flex flex-col gap-1">
+        <p className="text-xs text-text-muted/60">{conversionLabel}</p>
+        <div className="flex gap-6 text-xs text-text-muted">
+          <span>Variant A: {a.converted}/{a.assigned}</span>
+          <span>Variant B: {b.converted}/{b.assigned}</span>
+        </div>
       </div>
     </section>
   )
@@ -324,6 +341,24 @@ function HistogramSection({
   const maxCount = Math.max(...buckets.map(b => b.count), 1)
   const totalInView = buckets.reduce((s, b) => s + b.count, 0)
 
+  const distStats = useMemo(() => {
+    if (totalInView === 0) return null
+    const mean = buckets.reduce((s, b) => s + b.facts * b.count, 0) / totalInView
+    const variance = buckets.reduce((s, b) => s + b.count * Math.pow(b.facts - mean, 2), 0) / totalInView
+    const sd = Math.sqrt(variance)
+    // percentiles via cumulative count
+    const p10target = totalInView * 0.1
+    const p90target = totalInView * 0.9
+    let cum = 0
+    let p10 = 0, p90 = 0
+    for (const b of buckets) {
+      cum += b.count
+      if (cum >= p10target && p10 === 0) p10 = b.facts
+      if (cum >= p90target) { p90 = b.facts; break }
+    }
+    return { mean, sd, p10, p90 }
+  }, [buckets, totalInView])
+
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5">
       <div className="flex items-start justify-between gap-4">
@@ -394,6 +429,21 @@ function HistogramSection({
             <span>10 facts</span>
             <span>20</span>
           </div>
+        </div>
+      )}
+
+      {distStats && (
+        <div className="flex flex-wrap gap-x-5 gap-y-1 border-t border-border pt-3">
+          <span className="text-xs text-text-muted">
+            Top 10%ile: <span className="font-mono text-text">{distStats.p90} facts</span>
+          </span>
+          <span className="text-xs text-text-muted">
+            Bottom 10%ile: <span className="font-mono text-text">{distStats.p10} facts</span>
+          </span>
+          <span className="text-xs text-text-muted">
+            Mean: <span className="font-mono text-text">{distStats.mean.toFixed(1)}</span>
+            {' '}±<span className="font-mono text-text"> {distStats.sd.toFixed(1)} facts</span>
+          </span>
         </div>
       )}
 
@@ -487,7 +537,7 @@ function DemoBars({ groups }: { groups: DemographicGroup[] }) {
             <div className="h-full rounded bg-accent/30 border border-accent/40" style={{ width: `${(g.rate / maxRate) * 100}%` }} />
           </div>
           <span className="w-10 shrink-0 text-right font-mono text-[11px] text-text-muted">{(g.rate * 100).toFixed(0)}%</span>
-          <span className="w-10 shrink-0 font-mono text-[11px] text-text-muted/50">n={g.n}</span>
+          <span className="w-10 shrink-0 font-mono text-[11px] text-text-muted/50">Respondants (n) = {g.n} </span>
         </div>
       ))}
     </div>
@@ -753,13 +803,13 @@ export default function StatsPage() {
         <div className="flex flex-col items-center gap-4 text-center max-w-sm">
           <p className="text-sm text-text-muted">
             Results couldn&apos;t load — this usually happens when you navigate away and come back after a while, since the session expires.
-            A part of the A/B test records the 'depth' of 'scroll' into the list. You refresh to try again.
+            A part of the A/B test records the 'depth' of 'scroll' into the list. You can refresh to try again.
           </p>
           <button
-            onClick={() => { setError(null); fetchStats() }}
+            onClick={() => router.push('/')}
             className="rounded-lg px-4 py-2 text-sm font-medium text-accent ring-1 ring-accent/40 transition-colors hover:bg-accent/10"
           >
-            Refresh
+            Go back
           </button>
         </div>
       </main>
@@ -833,6 +883,7 @@ export default function StatsPage() {
                 a={stats.list_a}
                 b={stats.list_b}
                 test={stats.list_test}
+                conversionLabel="read all facts / visitors"
               />
             ) : (
               <ExperimentRawSection
@@ -845,6 +896,7 @@ export default function StatsPage() {
                 demoA={DEMO_STATS.list.a}
                 demoB={DEMO_STATS.list.b}
                 demoTest={DEMO_STATS.list.test}
+                conversionLabel="read all facts / visitors"
               />
             )}
 
